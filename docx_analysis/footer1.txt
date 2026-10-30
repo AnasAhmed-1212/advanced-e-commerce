@@ -1,0 +1,2 @@
+﻿=== footer1.xml ===
+[P style=Footer] Ecommerce development blueprint  |  

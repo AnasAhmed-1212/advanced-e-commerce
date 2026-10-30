@@ -1,0 +1,752 @@
+﻿=== MAIN DOCUMENT ===
+[P style=Title] Ecommerce Platform Development Blueprint
+[P style=Subtitle] React and Node.js store with a complete administration panel
+[P style=Small] Prepared 30 October 2026  |  Product specification and engineering guide
+[P style=] Build a single store where you upload products and categories, sell to registered customers or guests, accept approved payment methods, track shipments, and manage the full order lifecycle. The design follows the search-first structure and deal cards in your eBay screenshots, with your own brand and visual identity.
+[P style=Heading2] Recommended implementation
+[P style=] Use Next.js for the React storefront and admin interface, Tailwind CSS with shadcn/ui, a NestJS Node.js API, PostgreSQL, and background workers. Render product content on the server so visitors and search engines receive useful HTML. Keep inventory, orders and payments authoritative in PostgreSQL.
+[TABLE]
+| Decision | Recommended scope |
+| Business model | One merchant, fixed-price products, physical goods, category hierarchy and variants. |
+| Customer access | Accounts with sign in and sign out, plus guest checkout without registration. |
+| Payments | Provider adapters; confirm merchant eligibility before integration. Payoneer Checkout is conditional. |
+| Growth | Automatic SEO foundations, useful product content, measured acquisition and consent-based email. |
+| Later extensions | Multi-seller onboarding, auctions, seller payouts and complex marketplace disputes require a separate release. |
+[/TABLE]
+[P style=Small] 
+[P style=] No strategy can guarantee rankings or 100% customer conversion. The goal is a reliable store and a measurable process that improves qualified traffic, purchase rate and repeat orders.
+[P style=Heading2] Reading guide
+[TABLE]
+| Pages | Use |
+| 2 to 5 | UI references, storefront, administration and architecture |
+| 6 to 13 | Data schemas, SQL foundations, API controllers and project setup |
+| 14 to 19 | Security, checkout, payments, shipping and automatic publishing |
+| 20 to 25 | SEO, customer acquisition, privacy, email and development phases |
+| 26 to 30 | Acceptance tests, operations, code patterns and source references |
+[/TABLE]
+[P style=Small] 
+[P style=] 
+
+[P style=Heading1] 2 Visual direction from your references
+[P style=] Use the browsing logic visible in the supplied screens: a prominent search bar, category navigation, a wide promotion area, and product cards with clear prices. Use original photography, copy, logo and colors for your own store.
+[P style=CaptionText] Reference 1  Search and category navigation above a wide promotional hero
+[P style=CaptionText] Reference 2  Deal cards with consistent image areas and readable pricing
+[P style=Heading2] Translate the references into your store
+[P style=] Place search ahead of decoration. Give each product an uncluttered image area, a two-line name, current price, genuine discount information, delivery estimate and wishlist action. Use one primary action per context. Promotional banners should link to real collections with valid stock and dates.
+[P style=] For a first visit, promote categories and deals. Show account benefits as a secondary invitation while keeping shopping and guest checkout available.
+[P style=] 
+
+[P style=Heading1] 3 Storefront UI and customer journeys
+[TABLE]
+| Screen | Required interface and behavior |
+| Home | Utility bar, logo, category menu, search, account, cart, curated hero, category tiles, deals, best sellers and trust information. |
+| Category and search | Breadcrumbs, result count, query suggestions, filters, sort, product grid, crawlable pagination and useful empty states. |
+| Product detail | Gallery, title, brand, variant selectors, live price, availability, delivery estimate, returns, specifications, genuine reviews and related items. |
+| Cart and checkout | Editable quantities; totals; coupon validation; guest or account choice; address; shipping; approved payments; final review. |
+| Customer account | Orders, shipment timeline, invoices, addresses, wishlist, returns, profile, marketing choices and session management. |
+| Order help | Secure guest tracking, contact form, help articles, return policy, shipping policy, privacy notice and accessible support link. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Design system
+[P style=] Start with white surfaces, dark text, a single blue or green primary color, neutral borders, and restrained shadows. Suggested tokens: page background #FFFFFF; text #111827; primary #2563EB; muted #F3F4F6; border #D1D5DB. Use an 8 px spacing scale, 12 to 16 px card radii, and a consistent square product image ratio. Final colors must pass contrast checks.
+[TABLE]
+| Viewport | Layout rule |
+| Mobile 360 to 767 px | Two product columns where readable; full-width search; filter drawer; sticky purchase action that does not obscure content. |
+| Tablet 768 to 1023 px | Three product columns; compact navigation; responsive cart and checkout summaries. |
+| Desktop 1024 px and above | Four to six columns depending on card width; left filters; centered container up to about 1440 px. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Components and accessibility
+[P style=] Use shadcn/ui navigation, sheet, dialog, tabs, select, form, skeleton, pagination and toast components. Build admin tables with TanStack Table. Choose one component primitive family and use it consistently. [8, 19, 20]
+[P style=] Include visible keyboard focus, semantic headings, labeled inputs, descriptive errors, meaningful image alt text and reduced motion. Aim for WCAG 2.2 AA. Prefer a static hero; if a carousel is added, provide pause and keyboard controls. Test checkout with keyboard and screen readers.
+[P style=] 
+
+[P style=Heading1] 4 Administration panel that operates the business
+[P style=] Every admin action must persist through the API, enforce permissions and show clear progress, validation and recovery states. A dashboard is complete only when staff can perform the daily workflows below.
+[TABLE]
+| Module | Working capability |
+| Overview | Revenue excluding failed payments; paid and COD orders separated; pending fulfillment; low stock; date ranges; drill-through reports. |
+| Products | Draft, preview, publish, schedule, archive, duplicate, variants, images, SKU, SEO overrides, bulk edit and CSV import with row errors. |
+| Categories | Nested categories, sorting, attributes, landing content and redirects when URLs change; reject hierarchy cycles. |
+| Inventory | Stock receipt, adjustment with reason, reservation visibility, low-stock thresholds and append-only movement history. |
+| Orders | Search, detail, notes, fraud hold, packing, partial shipment, cancellation, invoice and customer notifications. |
+| Payments and returns | Provider references, reconciliation, partial refund, return approval, inspection, restock decision and dispute evidence. |
+| Customers | Order history, addresses, support context and consent status; authorized exports only; no password visibility. |
+| Marketing and SEO | Dated coupons, redemption limits, banners, collections, SEO validation, redirects, feeds and approved email segments. |
+| Shipping and settings | Zones, rates, couriers, tracking, taxes, locale, payment configuration status and email templates. |
+| Staff and audit | Invitations, roles, MFA enrollment, session revocation and searchable action history. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Staff permissions
+[P style=] Owner manages roles and integrations. Catalog staff edit products and stock. Fulfillment staff access orders and shipments. Support staff see only necessary customer details. Finance staff reconcile and refund. Marketing staff manage content and consented audiences. Check each permission on the server; hiding a button is only a UI convenience.
+[P style=Heading2] Example completion workflow
+[P style=] A catalog editor creates a product, adds images and variants, enters opening stock, validates the preview and publishes. Fulfillment staff receive a paid order, generate a packing list, create a shipment and record tracking. Finance can issue a partial refund with a reason. Every change records the actor and timestamp.
+[P style=] 
+
+[P style=Heading1] 5 Application architecture and library choices
+[P style=] Start with a modular monolith: one API codebase with clear domain modules, plus a separate worker process. It is easier to operate than early microservices and preserves transaction boundaries for stock and orders.
+[TABLE]
+| Layer | Choice and responsibility |
+| React application | Next.js App Router and TypeScript. Public catalog uses server rendering and explicit caching. Admin and account data are private and uncached. |
+| UI and forms | Tailwind CSS, shadcn/ui, Lucide icons, React Hook Form and Zod for client validation. Mirror critical rules in server DTOs. |
+| State and reports | TanStack Query for interactive server state; TanStack Table for admin grids; Recharts for simple charts. Keep cart totals server-authoritative. |
+| Node.js backend | NestJS with Express adapter, validation pipes, permission guards, domain services and OpenAPI documentation. |
+| Database | PostgreSQL with versioned migrations. Prisma is a suitable typed ORM; use parameterized SQL for locks and specialized indexes. |
+| Background work | Redis and BullMQ for jobs; PostgreSQL transactional outbox for durable publication, email and reconciliation events. |
+| Files and search | S3-compatible object storage and CDN. Begin with PostgreSQL full-text search; add Meilisearch or OpenSearch after measured need. |
+| Quality and telemetry | Vitest or Jest, Playwright, structured logs, OpenTelemetry and an error tracker. Pin compatible supported package versions. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Request and event boundaries
+[P style=] Browser requests go to the Next.js application and a same-origin /api/v1 reverse proxy to NestJS. NestJS reads and writes PostgreSQL. It calls payment and courier adapters only from the server. Workers consume durable outbox events and send email, refresh search documents, invalidate catalog caches and update product feeds.
+[P style=] The browser receives publishable provider configuration only. Database credentials, payment secrets, webhook secrets and signing keys stay in server secret storage. Separate development, staging and production databases, buckets and provider credentials.
+[P style=Heading2] Why Next.js is included
+[P style=] Next.js remains a React application and supports your requested stack. Its server rendering and metadata APIs give product pages and category pages a stronger technical foundation than relying only on a browser-rendered SPA. NestJS owns commerce rules; Next.js owns page composition. [4, 5, 17, 18]
+[P style=] 
+
+[P style=Heading1] 6 Database schema for identity and catalog
+[P style=] Use UUID primary keys, UTC timestamptz timestamps and explicit foreign keys. In the tables below, PK means primary key, FK means foreign key, UQ means unique, and ? means nullable. Field lists are the implementation dictionary, including the supporting entities required beyond the starter SQL.
+[TABLE]
+| Table | Main fields | Rules |
+| users | id PK, email_normalized UQ, password_hash?, name, phone?, status, email_verified_at?, created_at | Never store plaintext passwords. Social-only accounts may omit password_hash. |
+| sessions and tokens | sessions: id, user_id FK, token_hash UQ, expires_at, revoked_at?; auth_tokens: user_id, kind, token_hash, expires_at, used_at? | Rotate session IDs on login; consume reset and verification tokens once. |
+| roles and permissions | roles, permissions, user_roles, role_permissions; each join uses a composite PK | Permission keys such as products.publish and orders.refund. |
+| addresses | id, user_id FK, recipient, phone, country, region, city, postal_code?, address lines | Address book is editable; order addresses are independent snapshots. |
+| categories | id PK, parent_id? FK to categories, slug UQ, name, description, sort_order, active | Prevent cycles in service; publish only useful category landing pages. |
+| products | id, slug UQ, title, brand?, description, status, primary_category_id FK, published_at?, version | Status: draft, scheduled, published, archived. Explicit publish validation. |
+| product_variants | id, product_id FK, sku UQ, gtin?, option_values jsonb, price_minor, compare_at_minor?, currency, active | Each sellable item has a variant, including products with no visible options. |
+| media and attributes | product_media: product_id, variant_id?, object_key, alt_text, sort_order; attributes, category_attributes, product_attribute_values | Validate file type and dimensions. Typed attributes power reliable filters. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Catalog relations
+[P style=] A category has many products and may have child categories. A product has many variants and media assets. Add product_categories(product_id, category_id) with a composite PK when a product belongs to several collections; retain one primary category for breadcrumbs. A variant has stock records per warehouse.
+[P style=] Use product_seo(product_id PK/FK, meta_title?, meta_description?, canonical_override?, index_policy, content_version). Keep generated defaults separate from staff overrides so later imports do not erase editorial work.
+[P style=] 
+
+[P style=Heading1] 7 Database schema for checkout and money
+[TABLE]
+| Table | Main fields | Integrity requirement |
+| inventory_stock | variant_id FK, warehouse_id FK, on_hand, reserved; composite PK | CHECK on_hand >= 0, reserved >= 0 and reserved <= on_hand. |
+| stock_reservations | id, order_id FK, variant_id FK, warehouse_id FK, quantity, expires_at, state | UQ order/variant/warehouse. States active, committed, released. Changes are atomic. |
+| inventory_movements | id, variant_id, warehouse_id, delta_on_hand, delta_reserved, reason, reference, actor_id?, created_at | Append-only history. Prevent duplicate movements for the same event and action. |
+| carts and cart_items | cart: id, user_id?, guest_token_hash?, expires_at; item: cart_id, variant_id, quantity | UQ cart/variant; quantity > 0. Merge on login without exceeding stock. |
+| orders | id, order_number UQ, user_id?, email, phone, order_status, payment_status, fulfillment_status, currency, totals_minor, address snapshots | Guest orders have user_id NULL. Freeze prices, addresses, tax and delivery at placement. |
+| order_items | id, order_id FK, variant_id?, sku_snapshot, title_snapshot, options_snapshot, quantity, unit_price_minor, discount_minor, tax_minor | Product edits or archive must never change historical order amounts. |
+| payments | id, order_id FK, provider, provider_reference UQ per provider, amount_minor, currency, state, idempotency_key | One order can have multiple attempts; only verified payment results change paid status. |
+| refunds and returns | refunds: payment_id, amount_minor, reason, state, provider_ref; returns: order_id, state; return_items: order_item_id, quantity, disposition | Lock against over-refunds; count completed and pending refunds. Restock after inspection. |
+| shipping | shipments: order_id, carrier, tracking_number, state; shipment_items: shipment_id, order_item_id, quantity; tracking_events: shipment_id, event_key, occurred_at, status | Multiple shipments per order. UQ carrier event identity; enforce remaining quantities. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Money model and reconciliation
+[P style=] Store amounts as BIGINT minor units plus ISO currency, and serialize large amounts as decimal strings in JSON. Use currency exponent metadata; never assume every currency uses two decimals. Avoid JavaScript floating-point arithmetic for money. Keep authorized, captured, refunded and settled amounts distinct.
+[P style=] Order total equals line subtotals minus allocated discounts plus tax and shipping. Store provider fees, net settlement, currency conversion and settlement batches separately. Gross sales and available cash are different reports. Do not combine unlike currencies into one unconverted total.
+[P style=] 
+
+[P style=Heading1] 8 Database schema for growth and operations
+[TABLE]
+| Table group | Fields and relationships | Required protection |
+| coupons and redemptions | coupon: code UQ, type, value, currency?, min_spend, starts_at, ends_at, usage_limit; redemption: order_id FK, coupon_id FK, amount | Enforce limits transactionally; allocate discounts to items for partial refunds. |
+| wishlists and reviews | wishlist_items(user_id, product_id) composite PK; reviews(user_id, product_id, order_item_id?, rating, body, status) | Reviews require moderation; verified purchase label requires actual purchased item. |
+| consent_events | id, subject_id, purpose, action, source, policy_version, occurred_at | Append-only grant/withdrawal evidence. Maintain current effective consent separately. |
+| contacts and email | contacts: email_normalized UQ, user_id?, marketing_state; email_jobs: campaign_id, contact_id, state, provider_message_id | Suppress unsubscribed, bounced or complained addresses before every marketing send. |
+| analytics_events | event_id UQ, anonymous_id?, user_id?, name, properties, occurred_at, consent_version | Allowlisted properties; no email, card data, address or free-text search PII by default. |
+| content and SEO | banners, collections, pages, product_seo, url_redirects(from_path UQ, to_path, status_code), feed_jobs | Editorial overrides and version history; reject redirect loops and external redirect abuse. |
+| outbox and webhooks | outbox_events: id, type, aggregate_id, aggregate_version, payload, processed_at?; webhook_events: provider, event_id UQ per provider, state | Persist before acknowledging a valid webhook; retries and duplicate delivery are normal. |
+| admin and integrations | audit_logs: actor_id, action, entity_id, redacted_diff, request_id, created_at; integrations: provider, secret_reference, enabled | No secret values in audit logs. Separate authority to configure integrations. |
+| request safety | idempotency_keys: scope, actor_key, key, request_hash, response_ref, expires_at; guest_access_tokens: order_id, token_hash, expires_at | UQ scope/actor/key; a reused key with another payload returns conflict. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Indexes and deletion policies
+[P style=] Index every high-volume FK and common query: orders(user_id, created_at), orders(email_normalized, created_at), products(status, published_at), variants(product_id), payments(order_id), and tracking_events(shipment_id, occurred_at). Use GIN for full-text search and measured JSONB filters; avoid indexing every attribute blindly.
+[P style=] Use a unique index on lower(email) or normalize before writing. Archive products rather than cascading deletion into orders. Redact or anonymize customer data through a controlled retention process while preserving legally required order records. Audit access and test backup restoration.
+[P style=] 
+
+[P style=Heading1] 9 Starter SQL for catalog and inventory
+[P style=] This PostgreSQL foundation illustrates the field types and constraints. Extend it with the supporting tables on pages 6 to 8, version it through migrations and test it against an empty database before development branches depend on it. Application validation must supplement database checks.
+[P style=Code] CREATE TABLE categories (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   parent_id UUID REFERENCES categories(id),
+[P style=Code]   slug TEXT NOT NULL UNIQUE,
+[P style=Code]   name TEXT NOT NULL,
+[P style=Code]   active BOOLEAN NOT NULL DEFAULT true
+[P style=Code] );
+[P style=Code] CREATE TABLE products (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   primary_category_id UUID NOT NULL REFERENCES categories(id),
+[P style=Code]   slug TEXT NOT NULL UNIQUE,
+[P style=Code]   title TEXT NOT NULL,
+[P style=Code]   description TEXT NOT NULL DEFAULT '',
+[P style=Code]   status TEXT NOT NULL CHECK
+[P style=Code]     (status IN ('draft','scheduled','published','archived')),
+[P style=Code]   version INTEGER NOT NULL DEFAULT 1,
+[P style=Code]   published_at TIMESTAMPTZ,
+[P style=Code]   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+[P style=Code] );
+[P style=Code] CREATE TABLE product_variants (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   product_id UUID NOT NULL REFERENCES products(id),
+[P style=Code]   sku TEXT NOT NULL UNIQUE,
+[P style=Code]   option_values JSONB NOT NULL DEFAULT '{}',
+[P style=Code]   price_minor BIGINT NOT NULL CHECK (price_minor >= 0),
+[P style=Code]   currency VARCHAR(3) NOT NULL,
+[P style=Code]   active BOOLEAN NOT NULL DEFAULT true
+[P style=Code] );
+[P style=Code] CREATE TABLE warehouses (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   name TEXT NOT NULL
+[P style=Code] );
+[P style=Code] CREATE TABLE inventory_stock (
+[P style=Code]   variant_id UUID REFERENCES product_variants(id),
+[P style=Code]   warehouse_id UUID REFERENCES warehouses(id),
+[P style=Code]   on_hand INTEGER NOT NULL DEFAULT 0,
+[P style=Code]   reserved INTEGER NOT NULL DEFAULT 0,
+[P style=Code]   PRIMARY KEY (variant_id, warehouse_id),
+[P style=Code]   CHECK (on_hand >= 0 AND reserved >= 0),
+[P style=Code]   CHECK (reserved <= on_hand)
+[P style=Code] );
+[P style=Code] CREATE INDEX products_live_idx ON products(published_at)
+[P style=Code]   WHERE status = 'published';
+[P style=Small] 
+[P style=Small] Generate UUIDs in the application or use a supported database UUID function. Add created_at and updated_at consistently, and enforce updated_at in your write layer or a database trigger. Reserve product version numbers for optimistic concurrency and event ordering.
+[P style=] 
+
+[P style=Heading1] 10 Starter SQL for orders and event safety
+[P style=Code] CREATE TABLE users (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   email_normalized TEXT NOT NULL UNIQUE,
+[P style=Code]   password_hash TEXT,
+[P style=Code]   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+[P style=Code] );
+[P style=Code] CREATE TABLE orders (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   order_number TEXT NOT NULL UNIQUE,
+[P style=Code]   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+[P style=Code]   email_normalized TEXT NOT NULL,
+[P style=Code]   order_status TEXT NOT NULL DEFAULT 'pending',
+[P style=Code]   payment_status TEXT NOT NULL DEFAULT 'unpaid',
+[P style=Code]   fulfillment_status TEXT NOT NULL DEFAULT 'unfulfilled',
+[P style=Code]   currency VARCHAR(3) NOT NULL,
+[P style=Code]   total_minor BIGINT NOT NULL CHECK (total_minor >= 0),
+[P style=Code]   shipping_snapshot JSONB NOT NULL,
+[P style=Code]   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+[P style=Code] );
+[P style=Code] CREATE TABLE order_items (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   order_id UUID NOT NULL REFERENCES orders(id),
+[P style=Code]   variant_id UUID REFERENCES product_variants(id),
+[P style=Code]   sku_snapshot TEXT NOT NULL,
+[P style=Code]   title_snapshot TEXT NOT NULL,
+[P style=Code]   quantity INTEGER NOT NULL CHECK (quantity > 0),
+[P style=Code]   unit_price_minor BIGINT NOT NULL CHECK (unit_price_minor >= 0)
+[P style=Code] );
+[P style=Code] CREATE TABLE webhook_events (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   provider TEXT NOT NULL,
+[P style=Code]   event_id TEXT NOT NULL,
+[P style=Code]   state TEXT NOT NULL DEFAULT 'received',
+[P style=Code]   received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+[P style=Code]   UNIQUE(provider, event_id)
+[P style=Code] );
+[P style=Code] CREATE TABLE outbox_events (
+[P style=Code]   id UUID PRIMARY KEY,
+[P style=Code]   type TEXT NOT NULL,
+[P style=Code]   aggregate_id UUID NOT NULL,
+[P style=Code]   aggregate_version INTEGER NOT NULL,
+[P style=Code]   payload JSONB NOT NULL,
+[P style=Code]   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+[P style=Code]   processed_at TIMESTAMPTZ
+[P style=Code] );
+[P style=Code] CREATE INDEX orders_customer_idx
+[P style=Code]   ON orders(user_id, created_at DESC);
+[P style=Small] 
+[P style=Small] Add separate state enums or CHECK constraints for each status axis, payment and refund tables, totals breakdown, reservations and shipment items before checkout is released. Add a partial index on unprocessed outbox rows and bounded retention for webhook payloads. Never store unredacted payment credentials in JSONB.
+[P style=] 
+
+[P style=Heading1] 11 Customer API and controller contracts
+[P style=] Use /api/v1 as the public API prefix and OpenAPI as the contract. Controllers accept DTOs, authenticate callers and delegate to services. Services own stock, pricing and state transitions; repositories own database access. Return only allowlisted response fields.
+[TABLE]
+| Controller | Routes | Access and behavior |
+| AuthController | POST /auth/register, /login, /logout, /forgot-password, /reset-password; POST /auth/verify-email | Public or session as appropriate; rate limits; generic recovery responses; CSRF on browser mutations. |
+| AccountController | GET/PATCH /me; CRUD /me/addresses; GET /me/orders; GET /me/sessions; DELETE /me/sessions/:id | Authenticated owner only. Reauthenticate sensitive changes and revoke sessions when required. |
+| CatalogController | GET /categories; GET /products; GET /products/:slug; GET /search | Public published products only; validated filters, bounded page size and deterministic sort. |
+| CartController | POST /carts; GET /cart; POST/PATCH/DELETE /cart/items/:variantId | Session-bound account cart or high-entropy guest cart cookie; no client price acceptance. |
+| CheckoutController | POST /checkout/quote; POST /orders; POST /orders/:id/payment-session | Guest or account; cart capability or ownership; idempotency on placement and payment creation. |
+| OrderController | GET /orders/:id; POST /orders/:id/cancel; POST /orders/:id/returns | Authenticated owner or narrowly scoped guest capability; state-based cancellation rules. |
+| GuestAccess | POST /guest/orders/request-access; POST /guest/orders/verify-access; GET /guest/orders/:id | Generic request response, short-lived code or link, rate limit and order-scoped session. |
+| Wishlist and Review | GET/POST/DELETE /me/wishlist; POST /products/:id/reviews | Account owner; validate purchased item before verified-purchase label; moderation before display. |
+| ConsentController | GET/POST /consent; POST /newsletter/subscribe; POST /email/unsubscribe | Separate purpose flags; verification and abuse limits; unsubscribe works without account login. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Response conventions
+[P style=] Use a request ID in every response. Validation errors identify fields without leaking internals. Typical outcomes: 201 created; 400 invalid input; 401 no valid session; 403 forbidden; 404 unavailable resource; 409 stock, version or idempotency conflict; 422 unsupported business action; 429 throttled. Use a consistent JSON shape: code, message, fieldErrors and requestId.
+[P style=] Never let a URL order ID alone grant access. Staff access, customer ownership and guest capabilities are independent authorization paths. Enforce query limits server-side and paginate expensive lists.
+[P style=] 
+
+[P style=Heading1] 12 Admin controllers and webhook contracts
+[TABLE]
+| Controller | Routes under /api/v1 | Required permission or control |
+| AdminProducts | GET/POST /admin/products; PATCH /admin/products/:id; POST :id/publish, :id/archive; POST /admin/imports | products.read/write/publish. Use If-Match or expectedVersion on updates; validate bulk operations. |
+| AdminCategories | CRUD /admin/categories; POST /admin/categories/reorder | categories.write; validate cycles, URL changes and product reassignment. |
+| AdminInventory | GET /admin/inventory; POST /admin/inventory/adjustments | inventory.read/adjust; append movement, reason and actor; prohibit direct balance overwrite. |
+| AdminOrders | GET /admin/orders; GET :id; POST :id/hold, :id/cancel; POST :id/shipments | orders.read/manage and shipments.create; reject invalid transitions and excess quantities. |
+| AdminFinance | POST /admin/payments/:id/refunds; GET /admin/reconciliation | payments.refund; MFA step-up; maximum refundable amount; idempotent provider call. |
+| AdminCustomers | GET /admin/customers; GET :id; POST /admin/exports | customers.read/export; field-level masking and audited export purpose. |
+| AdminMarketing | CRUD /admin/coupons, /admin/banners; POST /admin/campaigns/:id/approve | marketing.write/send; preview, test recipient, suppression check and campaign approval. |
+| AdminSettings | PATCH /admin/settings; CRUD /admin/staff; GET /admin/audit-logs | settings.write, staff.manage or audit.read; owner privileges are not granted through profile edits. |
+| WebhookController | POST /webhooks/payments/:provider; POST /webhooks/shipping/:carrier | Provider signature verification over raw bytes, event deduplication, durable receipt and retries. |
+| InternalController | POST /internal/revalidate; POST /internal/jobs/replay | Service authentication and replay controls; never accept an arbitrary URL or job command. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Controller settings
+[P style=] Register a global validation pipe, session guard and permission guard. Mark public endpoints explicitly. Add audit interceptors to sensitive admin operations, an exception filter for safe error responses, and request-size limits before parsing. Webhooks bypass browser CSRF only because they use provider authentication; they do not bypass signature verification. [17, 18]
+[P style=Heading2] Service separation
+[P style=] ProductService owns catalog writes; InventoryService owns movements and reservations; CheckoutService freezes totals; PaymentService coordinates adapters and reconciliation; OrderService enforces order actions; ShipmentService maps courier states. Controllers must not contain ad hoc SQL or duplicate payment logic.
+[P style=] 
+
+[P style=Heading1] 13 Project layout and initial configuration
+[P style=] Use a TypeScript monorepo with one package manager and a lockfile. Select a supported Node.js LTS at kickoff, pin compatible package versions, and document upgrade ownership. Keep API and UI contracts shared without importing server secrets into the frontend.
+[P style=Code] apps/web/                  Next.js React storefront and admin
+[P style=Code]   app/(store)/             Home, category, product, checkout
+[P style=Code]   app/(account)/           Profile, orders and addresses
+[P style=Code]   app/admin/               Protected administration screens
+[P style=Code]   app/api/internal/        Signed cache revalidation handler
+[P style=Code]   components/ui/           Reviewed shadcn components
+[P style=Code] apps/api/src/
+[P style=Code]   modules/auth/            Controller, DTOs, service, guards
+[P style=Code]   modules/catalog/         Products, variants, categories
+[P style=Code]   modules/inventory/       Reservations and movements
+[P style=Code]   modules/checkout/        Quote and order creation
+[P style=Code]   modules/payments/        Provider adapters and webhooks
+[P style=Code]   modules/orders/          Orders, returns and refunds
+[P style=Code]   modules/shipping/        Carrier adapters and timeline
+[P style=Code]   modules/marketing/       Consent and campaign rules
+[P style=Code]   common/                  Errors, validation, auth, logging
+[P style=Code] apps/worker/src/           Outbox, emails, feeds and retries
+[P style=Code] packages/contracts/       OpenAPI types and event schemas
+[P style=Code] packages/database/        Migrations, models and seeds
+[P style=Code] packages/config/          Lint and TypeScript configuration
+[P style=Code] infra/                    Containers and deployment manifests
+[P style=Small] 
+[P style=Heading2] Environment settings
+[TABLE]
+| Server only | Public or non-secret |
+| DATABASE_URL, REDIS_URL, SESSION_SECRET, ENCRYPTION_KEY_REFERENCE | APP_URL, API path, supported locale and storefront currency |
+| PAYMENT_SECRET, PAYMENT_WEBHOOK_SECRET, CARRIER_API_KEY | Provider publishable key only when documented for browser use |
+| EMAIL_API_KEY, STORAGE_ACCESS_KEY, REVALIDATION_SECRET | Public image CDN base URL; no credentials in NEXT_PUBLIC variables |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Bootstrap sequence
+[P style=] Create the monorepo; configure linting and type checks; run local PostgreSQL, Redis and object storage; apply migrations; seed categories and permissions; create the first owner through a one-time administrative command; enroll MFA; generate OpenAPI clients; add CI. Validate required environment variables on process startup and fail closed if secrets are missing.
+[P style=] Build a vertical slice first: publish one product, browse it, place one guest test order, verify payment, dispatch it and view tracking. Complete that path before expanding decorative screens.
+[P style=] 
+
+[P style=Heading1] 14 Accounts sessions and guest access
+[P style=Heading2] Account lifecycle
+[P style=] Registration normalizes email, hashes the password with Argon2id, stores an unverified account and sends a single-use verification link. Login checks credentials, throttles attempts, rotates the session token and records a server-side session. Logout revokes that session and clears the cookie. Password reset expires existing sessions according to the recovery policy. [9]
+[P style=] Use a mature authentication library or carefully reviewed module. Allow password managers, long passphrases and breached-password checks. Provide generic login and recovery responses where appropriate to reduce account enumeration. Admin staff must enroll MFA, with audited recovery.
+[P style=Heading2] Session design
+[TABLE]
+| Setting | Specification |
+| Cookie | __Host-session with Secure, HttpOnly, Path=/, no Domain and SameSite=Lax for the same-origin architecture. |
+| Storage | High-entropy random session token in cookie; store its hash server-side. Keep roles and revocation authority on the server. |
+| Expiry | Starting policy: customers 7 days idle and 30 days absolute; staff 30 minutes idle and 12 hours absolute. Tune after risk review. |
+| CSRF | Validate CSRF token and allowed Origin on browser state changes. SameSite alone is not the entire CSRF defense. |
+| Sensitive actions | Reauthenticate for email change, MFA reset, role changes, gateway configuration and refunds. Notify the account owner. |
+| Browser storage | Do not put bearer authentication tokens in localStorage. Cart UI state can be local; authoritative cart access is protected. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Guest orders without an account
+[P style=] Checkout collects the delivery and contact details needed to fulfill the order and leaves orders.user_id empty. Do not create a password or subscribe the buyer silently. Email the receipt and a secure access path. Allow a later account invitation without blocking the purchase.
+[P style=] Guest tracking begins with order number and email, returns a generic result, then sends a one-time link or code. Store only a token hash, expire it quickly, and exchange it for a restricted order session. Redact addresses on tracking views and set Referrer-Policy: no-referrer on token exchange pages.
+[P style=] Claiming a guest order requires verification of the same email address. A matching typed email is insufficient. After verification, link only the relevant orders and record the action. Protect lookup, verification and resend endpoints with rate and abuse limits.
+[P style=] 
+
+[P style=Heading1] 15 Security requirements and abuse controls
+[TABLE]
+| Risk area | Implementation requirement | Acceptance evidence |
+| Unauthorized access | Deny by default; server-side permission and object ownership checks on every protected route. | A second customer cannot read or modify another customer order. |
+| Input and injection | DTO allowlists, parameterized queries, rich-text sanitization, URL validation and bounded filters. | Invalid fields rejected; stored script content cannot execute. |
+| Payment tampering | Calculate totals server-side; verify signed callbacks and provider status; compare order, amount and currency. | Browser return URL cannot mark an unpaid order paid. |
+| Race conditions | Row locks or conditional stock updates, database transactions, uniqueness and idempotent side effects. | Concurrent attempts to buy the last unit produce one successful allocation. |
+| Web security | HTTPS, HSTS after validation, strict CSP, clickjacking protection, safe redirects and least-privilege CORS. | Approved payment SDK works; unapproved script origin is blocked. |
+| File upload | Presigned upload, size/type limits, magic-byte check, image re-encoding, malware checks and private staging. | An executable or oversized file cannot become a public product image. |
+| Secrets and logs | Secret manager, rotation, encryption at rest, log redaction and separate production credentials. | No password, full card, token or sensitive address appears in logs. |
+| Fraud and automation | Rate limits, suspicious login alerts, checkout velocity checks and risk-based challenges. | Retry abuse is throttled without blocking normal guest purchase. |
+| Supply chain | Dependency lockfile, security review, vulnerability scan and minimal runtime permissions. | Build uses reviewed artifacts and no known critical exploitable dependency. |
+| Operational access | Private database network, least-privilege service users, admin MFA and immutable audit export. | Restoration succeeds; privilege change and refund have traceable actors. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Payment data boundary
+[P style=] Use hosted checkout or provider-hosted fields. Keep PAN and CVV outside your application, logs and database; store only provider references and permitted masked metadata. This reduces card-data exposure but does not automatically remove all PCI obligations. Confirm the applicable validation scope with the payment provider.
+[P style=Heading2] Controls must be tested
+[P style=] Include IDOR tests, account recovery tests, expired session tests, CSRF rejection, webhook replay, duplicate refunds, malicious upload, unauthorized export and concurrent stock tests. Security acceptance belongs in each phase, with a focused review before accepting live payments. [9, 10]
+[P style=] 
+
+[P style=Heading1] 16 Checkout pricing and stock integrity
+[P style=] Guest and registered buyers use the same pricing and inventory services. Treat the cart as a request to purchase; it does not reserve stock indefinitely. Present a final quote with an expiry and recalculate it when placing the order.
+[P style=Heading2] Order placement algorithm
+[P style=ListNumber] Accept variant IDs, quantities, address, shipping choice and coupon. Resolve the cart from its session or guest capability. Ignore client prices and totals.
+[P style=ListNumber] Require an idempotency key scoped to the actor and operation. Persist a request hash; the same key and payload returns the same order, while a changed payload returns conflict.
+[P style=ListNumber] In a database transaction, lock stock rows in deterministic order, validate available stock and allocate discounts, tax and shipping from current server rules.
+[P style=ListNumber] Create the pending order and immutable line and address snapshots. Reserve stock for a defined payment window, for example 15 minutes where the provider supports it. Add outbox events and commit.
+[P style=ListNumber] Outside the database transaction, create the provider checkout session with a stable payment attempt ID and provider idempotency where available. Persist the reference. Never hold stock-row locks while making a network call.
+[P style=ListNumber] On a verified successful capture, lock the order, payment and reservations. Check reference, amount and currency. Commit stock once, update payment state and enqueue the confirmation through the outbox.
+[P style=Heading2] State and failure rules
+[TABLE]
+| Situation | Required result |
+| Two buyers want the final unit | Only one reservation succeeds; the other receives a clear stock conflict and a refreshed cart. |
+| Payment fails or session expires | Cancel or expire the attempt, release its active reservation once and allow a controlled retry. |
+| Provider request times out | Query or reconcile the existing attempt before creating another charge; show processing rather than false failure. |
+| Payment arrives after stock release | Attempt atomic reallocation; if unavailable, place on exception hold and refund according to policy. Do not silently oversell. |
+| COD order | Record payment_due and payment method COD. Allocate stock after confirmation; record collection and courier remittance separately. |
+| Discount or tax changes | Freeze accepted totals on the placed order. Requote before placement if the original quote is no longer valid. |
+[/TABLE]
+[P style=Small] 
+[P style=] Do not report a payment authorization as captured revenue. Support authorized, captured, failed, cancelled, partially refunded and refunded payment states independently from shipping. [10]
+[P style=] 
+
+[P style=Heading1] 17 Payments and the Payoneer decision
+[P style=] A Payoneer receiving account or balance is not automatically a retail checkout gateway. Payoneer Request a Payment is intended for business payments and is not a substitute for consumer ecommerce checkout. Payoneer Checkout is the relevant product, subject to merchant eligibility. [1, 2]
+[P style=] At review, Payoneerâ€™s Checkout page states the service is provided exclusively to US and Hong Kong entities; its interest form also mentions a Hong Kong entity and monthly webstore volume above USD 20,000. Obtain written confirmation for your legal entity, business model and volume before making this the launch dependency. [1]
+[TABLE]
+| Option | Recommended use and limitation |
+| Payoneer Checkout | Implement only after approval and access to the documentation for the exact product offered. Supported cards and wallets vary by integration and market. |
+| Pakistan payment gateway | Evaluate Safepay as a local acquiring option for domestic and international payments. Confirm product eligibility, currencies, settlement bank, refunds and enabled methods. [3] |
+| Local wallets and Raast | Enable only the methods present in your approved gateway contract. Confirm JazzCash, Easypaisa or other requested rails individually; a generic wallet logo is not proof of support. |
+| COD or bank transfer | Useful where your fulfillment and reconciliation process supports them. Transfers remain pending until independently verified; uploaded receipts alone cannot mark paid. |
+| Store credit | Optional later feature for non-withdrawable promotional credit with a ledger. Payoneer settlement is separate from a customer wallet. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Provider adapter contract
+[P style=Code] PaymentProvider:
+[P style=Code]   createCheckout(order, attemptId, returnUrl)
+[P style=Code]   verifyWebhook(rawBody, headers)
+[P style=Code]   fetchPayment(providerReference)
+[P style=Code]   refund(payment, amountMinor, idempotencyKey)
+[P style=Code]   getCapabilities(country, currency)
+[P style=Small] 
+[P style=] Store the provider reference and present only returned, allowlisted checkout URLs. Verify callbacks using that providerâ€™s current signing scheme over raw bytes. Persist authenticated events durably, acknowledge promptly, then process with retries. Never invent Payoneer endpoints or assume one providerâ€™s webhook API matches another.
+[P style=Heading2] Approval and go live evidence
+[P style=] Collect business registration and KYC, settlement bank details, website policies, product restrictions, fees, FX terms, settlement timing, reserve policy and dispute process. In staging, test success, decline, cancellation, duplicate event, missing event, partial refund and reconciliation. No provider accepts every payment method in every country.
+[P style=] 
+
+[P style=Heading1] 18 Order tracking shipping and returns
+[P style=Heading2] Separate order payment and fulfillment states
+[P style=] Order states: pending, confirmed, on_hold, cancelled and completed. Payment states: unpaid, processing, authorized, captured, partially_refunded, refunded and failed. Fulfillment states: unfulfilled, partially_shipped, shipped, delivered and returned. Derive customer labels from these axes rather than one overloaded status field.
+[TABLE]
+| Step | System action | Customer view |
+| Placed | Freeze order details, record payment state and send the correct receipt or pending-payment notice. | Order received with item list and payment result. |
+| Confirmed | Payment verified or COD confirmation accepted; warehouse allocation and fraud hold reviewed. | Confirmed and preparing your order. |
+| Packed and shipped | Create carrier shipment, label and tracking reference; assign shipped quantities to order items. | Carrier, tracking link and shipped items. |
+| In transit | Authenticate carrier webhook or poll the carrier API; normalize events and preserve raw status mapping. | Timeline with last update time and delivery estimate. |
+| Delivered or exception | Record delivered, delayed, failed delivery or returned-to-origin. Alert staff about unresolved exceptions. | Delivered status or clear next step and support action. |
+| Return and refund | Approve eligible items, receive goods, inspect, choose restock disposition and process refund. | Return progress and refund amount with expected processing information. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Carrier integration
+[P style=] Choose a courier after checking coverage, COD remittance, tracking API access, labels, pickup workflow, claims and return-to-origin costs. Implement a carrier adapter with createShipment, cancelShipment and fetchTracking. Start with one carrier and allow a staff-entered tracking fallback with audit history.
+[P style=] Deduplicate carrier events, store their occurrence time and prevent a delayed in-transit message from overwriting delivered status. Support multiple packages, partial shipment and separate tracking numbers. Show the most recent successful synchronization; do not display â€œliveâ€ when the courier has not provided a new event.
+[P style=Heading2] Secure tracking and notification rules
+[P style=] Registered buyers open their own orders. Guests verify access through the email flow on page 14. Public carrier tracking links may show logistics progress; your store must not reveal recipient addresses from an order number alone. Notify only meaningful changes, deduplicate messages and route delivery exceptions to a staff queue.
+[P style=] 
+
+[P style=Heading1] 19 Automatic publishing and SEO updates
+[P style=] Uploading a file creates a draft asset; publishing a validated product creates the public page. Provide an optional auto-publish mode only for trusted imports that pass the same checks. The admin should show each step and any failed jobs.
+[P style=Heading2] Publishing workflow
+[P style=ListNumber] Validate title, primary category, SKU uniqueness, variant price and currency, images, alt text, shipping data and inventory policy. Reject incomplete or unsafe content.
+[P style=ListNumber] Build a stable slug, default SEO title and description from verified attributes. Preserve staff overrides. Generate useful copy from factual product data; AI suggestions require a factual review.
+[P style=ListNumber] Commit the catalog changes and product.published or product.updated event in one PostgreSQL transaction. Increment the product version.
+[P style=ListNumber] Workers refresh catalog search, invalidate product and category caches, regenerate relevant sitemap entries, and schedule Merchant Center feed updates where the store is eligible.
+[P style=ListNumber] Verify the rendered product HTML, metadata, canonical URL, image URLs and Product offer data. Publish the event version to prevent old retries overwriting newer content.
+[P style=Heading2] Default metadata rules
+[TABLE]
+| Field | Default and override policy |
+| Title | Brand + product type + important differentiator + store name. Aim for clear concise copy, often around 50 to 60 characters; this is an editorial guide. |
+| Description | One useful sentence explaining the product, verified benefit and delivery or policy detail. Roughly 140 to 160 characters is a drafting guide, not a ranking rule. |
+| Price and availability | Use current variant price and stock policy in visible page content and structured data. Never accept a stale price during checkout. |
+| Canonical and sitemap | One intended canonical URL per indexable page. List only canonical, public, successful pages; update lastmod after meaningful changes. |
+| Social preview | Generate Open Graph title, description and an original share image; keep share assets stable and publicly accessible. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Freshness contract
+[P style=] Suggested internal targets: price and stock updates visible in the store within 10 seconds; descriptive content within 60 seconds. For critical catalog changes, expire cached data immediately through an authenticated Next.js handler; ordinary content may use stale-while-revalidate. Test the exact semantics of the pinned Next.js release. [4, 5]
+[P style=] Provide an admin retry queue and alert when publication jobs exceed the target. Search engines choose when to crawl and index; a successful store update does not mean immediate Google ranking.
+[P style=] 
+
+[P style=Heading1] 20 SEO strategy for an expanding catalog
+[P style=] Prioritize a narrow category you can serve well, then expand from search and sales evidence. Automatic metadata supports a scalable catalog, but useful product information, availability, competitive offers and customer trust determine whether visitors buy.
+[TABLE]
+| Priority | Implementation | How to verify |
+| Crawlable structure | Link home to categories, subcategories and all products using real anchors. Provide paginated URLs as well as any load-more interface. [6] | Fetch representative pages without client execution; crawl the category-to-product path. |
+| Product data | Render Product, Offer and BreadcrumbList in HTML. Add valid GTIN or brand where available; match price and availability to visible content. [7] | Rich Results Test plus feed and page consistency checks. |
+| Variants | Give selectable variants stable URLs and appropriate ProductGroup relationships. Choose one supported canonical model and use it consistently. [12] | Test color and size deep links, canonical tags and variant offers. |
+| Filters and duplicates | Index curated valuable collections. Control arbitrary sorting and filter combinations; avoid infinite URL spaces. [11] | Crawl budget review; noindex pages must remain crawlable until exclusion is seen. |
+| Content quality | Write original specifications, sizing, compatibility, comparisons and buying guides based on actual products. Avoid mass thin pages or invented claims. [13] | Editorial review and query-level engagement and sales. |
+| Performance | Optimize hero images, responsive formats, font loading, JS weight and layout stability. Target LCP <= 2.5 s, INP <= 200 ms, CLS <= 0.1 at the 75th percentile. [14] | Real-user Core Web Vitals; lab tests before traffic exists. |
+| Lifecycle | Keep temporary out-of-stock pages useful. Use a 301 for a genuine replacement, otherwise an honest 404 or 410 when permanently removed. | No redirect chains, soft 404s or archived items in sitemap. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Indexing policy
+[P style=] Keep account, checkout, cart, order tracking, internal search and admin pages out of the index. Authentication protects private data; robots.txt does not. Use noindex for suitable crawlable pages and never expect a blocked crawler to read a noindex tag. Apply robots rules to prevent unnecessary facet crawling after assessing existing indexed URLs.
+[P style=] Verify Search Console, submit sitemaps, monitor indexing and structured-data issues, and use Merchant Center free listings where country and product eligibility permit. Do not fabricate reviews, fake stock or keyword-stuff titles. SEO success is measured over time, with no guaranteed position. [7, 13]
+[P style=] 
+
+[P style=Heading1] 21 Customer acquisition and conversion strategy
+[P style=] There is no method that produces customers with 100% certainty. Use small experiments with margin-based spending limits, then scale the combinations of products, audiences and offers that produce profitable orders.
+[P style=Heading2] The first ninety days after launch
+[TABLE]
+| Period | Action | Decision measure |
+| Days 1 to 14 | Launch 20 to 50 well-documented products in one category. Check mobile checkout, delivery coverage, support and real product photography. | Find usability failures; measure checkout completion and payment success. |
+| Days 15 to 30 | Publish useful category guides and comparisons; test one acquisition channel and two offers. Use authentic product demonstrations. | Qualified visits, add-to-cart rate, paid orders and contribution margin by channel. |
+| Days 31 to 60 | Improve high-impression low-click pages, simplify checkout and expand proven categories. Collect genuine reviews after delivery. | Organic click-through, conversion, returns and cost per new customer. |
+| Days 61 to 90 | Scale profitable campaigns, negotiate fulfillment costs, improve product bundles and introduce a relevant replenishment or loyalty offer. | Repeat purchase, cohort margin, refund rate and inventory turnover. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Store changes that support sales
+[P style=ListBullet] Show the full payable total and delivery estimate before payment. State returns and warranty clearly. Let buyers check out as guests.
+[P style=ListBullet] Keep photos and descriptions accurate. Show true availability, useful variants and relevant product comparisons. Avoid fake countdowns or unsupported discount claims.
+[P style=ListBullet] Make local shipping coverage, support hours and contact methods visible. Use bundles and free-shipping thresholds only when the margin supports them.
+[P style=ListBullet] Use consented email offers, back-in-stock requests, review requests and repeat-customer rewards. Match each offer to stock and customer interest.
+[P style=Heading2] Metrics and spending limits
+[P style=] Conversion rate = completed paid orders divided by eligible sessions; report confirmed COD orders separately. CAC = acquisition spend divided by new customers acquired. Contribution per order = net revenue less product cost, payment fees, delivery subsidy, expected returns and variable fulfillment cost.
+[P style=] Example only: if a PKR 5,000 order leaves PKR 1,000 before advertising, PKR 1,000 is an upper break-even acquisition cost before fixed costs. A lower target leaves room for profit. Do not justify high spending with assumed lifetime value before repeat-purchase evidence exists. Compare experiments over sufficient samples; record attribution uncertainty.
+[P style=] 
+
+[P style=Heading1] 22 Cookies customer identity and privacy
+[P style=] Cookies can recognize a browser and remember permitted activity; they cannot reveal an anonymous visitorâ€™s email address. Collect email directly through checkout, account creation or a voluntary subscription. Explain each purpose and use a consent-first marketing design for international reach.
+[TABLE]
+| Purpose | Data and behavior | Customer control |
+| Essential shopping | Session, cart, checkout security and fraud controls needed to provide the requested service. | Explain in the cookie notice; keep shopping available without optional tracking. |
+| Analytics | Pseudonymous page, product, cart and conversion events after the selected consent policy allows them. | Off by default in this recommended baseline; accept or reject with comparable prominence. |
+| Advertising | Ad pixels, audience exports and behavioral targeting only after the appropriate permission. | Separate optional choice; honor withdrawal and applicable opt-out signals. |
+| Email marketing | Address supplied by the person plus a separate unchecked marketing choice. | Record source, purpose, notice version and time; easy unsubscribe in every promotional email. |
+| Service messages | Receipts, password recovery, shipment and return notices for the requested transaction. | Keep the content operational; do not add promotional blocks to bypass marketing preferences. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Identification flow
+[P style=] A new visitor may receive a random analytics ID only when permitted. If the visitor later signs in or submits their email, associate only the activity allowed by the disclosed purposes and current permissions. Do not attach past rejected tracking, infer identity from IP addresses, buy anonymous-email matches or use fingerprinting to evade refusal.
+[P style=Heading2] Implementation checklist
+[P style=ListBullet] Build a preference panel with essential, analytics and advertising purposes. Store the current choice and append grant or withdrawal events. Block optional tags before consent.
+[P style=ListBullet] Validate consent server-side before marketing jobs, not just in the browser. An analytics choice is not an email subscription. A purchase email is not automatic permission for deals.
+[P style=ListBullet] Offer access, correction and deletion requests. Set retention periods, for example 90 days for raw behavioral events as a starting product policy, and document separate order-record retention requirements.
+[P style=ListBullet] Keep emails and addresses out of analytics payloads and URLs. Restrict staff exports, redact logs and review third-party processor settings.
+[P style=] UK ICO guidance distinguishes essential cookies from optional tracking and sets specific electronic-marketing requirements. This blueprint chooses a stricter consent-first default; applicable obligations still depend on customer location and the way the store operates. Review target markets before launch. [15, 16]
+[P style=] 
+
+[P style=Heading1] 23 Email automations and deliverability
+[TABLE]
+| Automation | Suggested trigger | Send and stop conditions |
+| Verification and recovery | User initiates registration or recovery. | Single-use expiring link; strict resend limits; no promotional content. |
+| Order and payment | Order recorded or verified payment event. | Send once per event; distinguish pending, captured and failed payment accurately. |
+| Shipment and return | Carrier milestone or return/refund transition. | Deduplicate; include secure order access and support details. |
+| Welcome offer | Subscription confirmed, preferably through double opt-in. | Marketing permission active; coupon valid; stop when unsubscribed. |
+| Abandoned cart | Example: 2 hours then 24 hours after inactivity. | Known email plus appropriate marketing permission; cart still exists; stop on purchase or withdrawal. |
+| Back in stock | Requested variant becomes available. | Use the requested notification permission; do not enroll in unrelated campaigns. |
+| Post-purchase review | Example: 7 days after delivery. | Respect applicable messaging rules; suppress unresolved returns or complaints; no fake review incentives. |
+| Relevant offers and win-back | Example: opted-in segment or 45 days after purchase. | Current permission, in-stock products and frequency cap; suppress low-engagement recipients. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Reliable automation design
+[P style=] Commerce events enter the outbox, then a worker evaluates the current customer, order and consent state. Save a deduplication key such as orderId plus eventType. Retry transient errors with exponential backoff, and route exhausted jobs to a visible failure queue. Recheck suppression immediately before sending because permission may change while a job waits.
+[P style=] Maintain campaign templates, preview data, a test-send flow and an approval action. Include sender identity, contact information and a working unsubscribe path in promotional messages. Use a global cap such as two promotional messages per week initially, with separate limits for each automation. Treat all timings here as starting hypotheses to test.
+[P style=Heading2] Sender reputation
+[P style=] Use a transactional email provider with verified sending domains. Configure SPF, DKIM and DMARC; separate transactional and promotional streams; process bounce, complaint and unsubscribe webhooks; and warm sending gradually. Provide one-click unsubscribe headers for marketing from the start. Gmail imposes additional requirements on bulk senders. [21]
+[P style=] Measure clicks, purchases, unsubscribes and complaints. Open rates are unreliable because privacy features can prefetch images. Prefer campaign revenue and conversion with attribution limits. Store no bought email lists, and do not send deals to visitors who never provided an address and marketing permission.
+[P style=] 
+
+[P style=Heading1] 24 Development phases from discovery to checkout
+[P style=] Planning estimate: 16 to 20 calendar weeks for two experienced full-time developers, with design and QA support, a limited initial catalog, one payment provider and one courier. A solo build can take materially longer. Provider approval and operational readiness can extend the calendar independently of coding.
+[TABLE]
+| Phase | Work and deliverables | Exit gate |
+| 1 Discovery / Week 1 | Confirm merchant model, countries, currency, catalog, variants, fulfillment, return policy and product restrictions. Start payment onboarding. Define requirements and permission matrix. | Scope approved; gateway eligibility evidence requested; one measurable launch goal and prioritized backlog. |
+| 2 UX and UI / Weeks 2 to 3 | Wireframe home, listings, product, cart, guest checkout, account, tracking and admin. Build design tokens, reusable components and mobile prototypes. | Critical flows reviewed at mobile and desktop sizes; keyboard and error states designed. |
+| 3 Foundation / Weeks 4 to 5 | Create monorepo, CI, staging, migrations, authentication, roles, owner MFA, audit logging, storage and API contracts. | Session, permission and recovery tests pass; clean migration works; staging secrets isolated. |
+| 4 Catalog and commerce / Weeks 6 to 9 | Complete products, categories, variants, imports, stock, search, wishlist and cart. Build quote and guest checkout, reservations, order snapshots and admin order processing. | Staff publish an item; it appears in the correct category; guest and account test orders have correct totals and stock. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Work inside each phase
+[P style=] For each feature, specify UI states, API contract, schema migration, authorization, domain service, background events and acceptance tests before calling it done. A screen that uses mock data does not satisfy an exit gate. Seed realistic products, a low-stock variant, an unpaid order, a partial refund and a delivery exception for review.
+[P style=Heading2] Decisions the owner needs to settle
+[P style=] Confirm store name and branding, target countries, product category, sourcing and stock process, supported currency, warehouse address, delivery partners, return terms and payment entity. Keep these in configuration or documented policy where appropriate; do not bury business choices in controllers.
+[P style=] The schedule assumes a single merchant. Opening the platform to independent sellers changes onboarding, authorization, commissions, settlement, dispute handling and reporting, and requires its own scope and delivery estimate.
+[P style=] 
+
+[P style=Heading1] 25 Development phases from payments to launch
+[TABLE]
+| Phase | Work and deliverables | Exit gate |
+| 5 Payments and shipping / Weeks 10 to 12 | Integrate one approved gateway and courier. Build webhook deduplication, reconciliation, refunds, labels, tracking, partial fulfillment and returns. | Verified payment and shipment complete end to end; decline, timeout, duplicate and refund cases pass. |
+| 6 SEO and retention / Weeks 13 to 14 | Complete server-rendered catalog, metadata, JSON-LD, canonical rules, sitemap, redirects and feeds. Add consent controls, email automations and admin retry screens. | Published product updates without redeploy; optional tags stay blocked after rejection; unsubscribe prevents queued marketing. |
+| 7 Hardening and pilot / Weeks 15 to 16 | Performance, accessibility, security, concurrency and recovery tests. Owner acceptance, staff training, fulfillment rehearsal and a limited live pilot. | No unresolved critical defects; restore tested; pilot orders reconciled; launch checklist signed off. |
+| 8 Launch and improvement / Weeks 17 to 20 | Release gradually, monitor payment and job health, run acquisition experiments, fix real customer friction and tune inventory operations. | Stable checkout and fulfillment; daily reconciliation; prioritized improvements based on real usage. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Delivery ownership
+[P style=] Product owner supplies product information, pricing, policies and merchant applications. Frontend engineer owns storefront and admin interactions. Backend engineer owns data integrity, integrations and security rules. Designer validates usability and consistency. QA verifies business flows, privacy choices and failure cases. One person can hold multiple roles, but each gate still needs an owner.
+[P style=Heading2] Dependencies that can block launch
+[P style=ListBullet] Payment provider approval, eligible products, settlement account, verified domain and access to live credentials.
+[P style=ListBullet] Courier account, delivery coverage, COD process if offered, packaging and a person responsible for dispatch and returns.
+[P style=ListBullet] Accurate product images, weights, dimensions, opening stock, tax configuration and legally appropriate customer policies.
+[P style=ListBullet] Production backups, alert recipients, customer support contact, email domain authentication and successful live pilot refunds.
+[P style=Heading2] Definition of a complete launch
+[P style=] The owner can add and publish stock, a guest can pay and track delivery, a customer can manage their account, staff can fulfill and refund, and the business can reconcile money. The system remains usable when optional tracking is rejected. Release gates measure these outcomes rather than counting pages or components.
+[P style=] 
+
+[P style=Heading1] 26 Acceptance tests and release checklist
+[P style=] Prioritize tests that protect money, access, stock and customer communications. Use unit tests for pricing and state rules, integration tests against PostgreSQL for transactions, provider sandbox tests, and Playwright for critical browser journeys.
+[TABLE]
+| ID | Scenario | Pass condition |
+| A01 | Account and session | Register, verify, login and logout work; revoked session cannot access private data. |
+| A02 | Guest checkout and claim | Guest places order without registration; access requires verification; account claim links only verified orders. |
+| A03 | Admin authorization | Catalog staff cannot refund or change roles; direct API calls are rejected and logged. |
+| A04 | Product publication | Product, images, category, title, description, price, stock and JSON-LD become consistent without a deployment. |
+| A05 | Last unit race | Two concurrent orders for one unit cannot create two valid reservations or negative stock. |
+| A06 | Payment authenticity | Forged, wrong-amount and wrong-currency events cannot mark paid; valid duplicates have one effect. |
+| A07 | Retry and reconciliation | A lost response or webhook resolves to the original attempt, without a duplicate charge or abandoned captured order. |
+| A08 | Refund and shipping | Partial refund cannot exceed captured balance; partial shipping cannot exceed purchased quantity; return disposition controls restock. |
+| A09 | Privacy and email | Reject optional cookies: no optional tags fire. Withdraw email permission: queued offers stop; operational notices still work. |
+| A10 | Search and accessibility | Useful HTML and canonical links exist; structured data validates; checkout supports keyboard and readable error states. |
+| A11 | Failure recovery | Worker restart, duplicate event and provider outage preserve order correctness and expose an actionable retry queue. |
+| A12 | Operations | Backup restore succeeds; logs redact secrets; alerting works; reconciliation balances the live pilot orders. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Suggested performance gates
+[P style=] Load-test realistic catalog filters and checkout concurrency. Start with a documented target such as 50 concurrent checkout attempts with no integrity errors; increase to the forecast launch load. Set internal API latency and error budgets from staging measurements, excluding the external provider delay rather than hiding it from customer timings.
+[P style=] Measure Core Web Vitals on mobile, not only a desktop Lighthouse score. Keep a rollback procedure ready, use backward-compatible migrations, and prevent fulfillment of unverified payments during the pilot. [14]
+[P style=] 
+
+[P style=Heading1] 27 Deployment operations and cost planning
+[P style=Heading2] Deployment topology
+[P style=] Host the Next.js application on a suitable managed platform or Node runtime, and deploy NestJS and workers as long-running processes with health checks. Use managed PostgreSQL, Redis, object storage and a CDN. Ensure a shared catalog-cache strategy if Next.js runs on multiple instances. Keep application regions close to the database.
+[TABLE]
+| Operational area | Required process |
+| CI and release | Lint, type check, test, dependency review, build, migration dry run, staging acceptance, then controlled production deployment. |
+| Database | Connection pooling, least-privilege users, slow-query monitoring, daily backups and point-in-time recovery where available. |
+| Events and jobs | Retry policy, dead-letter queue, idempotent consumers and alerts for lag. Reconcile unfinished work from PostgreSQL, not Redis alone. |
+| Payments | Daily compare orders, attempts, refunds, provider statements and settlement bank records. Investigate mismatches and aged processing states. |
+| Monitoring | Track checkout failures, webhook errors, stock conflicts, publication lag, email bounces, courier sync age and unusual admin actions. |
+| Incident response | Named owner, support contact, disable affected gateway if necessary, retain evidence, communicate order impact and document recovery. |
+| Recovery targets | Initial business targets: RPO 15 minutes and RTO 4 hours if funded and technically supported; prove with a restore exercise. |
+| Catalog growth | Use pagination and selective indexes; measure search relevance and query latency before adding a dedicated search cluster. |
+[/TABLE]
+[P style=Small] 
+[P style=Heading2] Budget categories
+[P style=] Request separate quotes for engineering, design and QA; cloud application hosting; database and Redis; storage and image delivery; transactional and promotional email; observability; payment processing and FX; courier and returns; security review; and ongoing maintenance. Costs depend on order volume, geography, catalog and provider contracts, so do not treat a hosting quote as the whole operating budget.
+[P style=Heading2] Initial operating rhythm
+[P style=] Daily: payment reconciliation, dispatch exceptions, stock alerts and failed jobs. Weekly: query and sales performance, email complaints, returns and admin audit review. Monthly: dependency maintenance, restore drill or documented recovery check, access review, customer feedback and experiment results.
+[P style=] Launch with the smallest dependable configuration and reserve maintenance time. Advanced recommendations, loyalty points and a native app should follow evidence of demand, not delay a working store.
+[P style=] 
+
+[P style=Heading1] 28 Implementation patterns for the engineering team
+[P style=Heading2] NestJS bootstrap foundation
+[P style=Code] const app = await NestFactory.create<NestExpressApplication>(
+[P style=Code]   AppModule, { rawBody: true }
+[P style=Code] );
+[P style=Code] app.setGlobalPrefix('api/v1');
+[P style=Code] app.use(helmet());
+[P style=Code] app.use(cookieParser());
+[P style=Code] app.useGlobalPipes(new ValidationPipe({
+[P style=Code]   whitelist: true, forbidNonWhitelisted: true, transform: true
+[P style=Code] }));
+[P style=Code] await app.listen(config.port);
+[P style=Code] // Register session, permission and CSRF guards in AppModule.
+[P style=Code] // Set request size limits and trust-proxy to known hops only.
+[P style=Small] 
+[P style=Small] This bootstrap fragment assumes the named imports and validated configuration exist. Install and configure throttling, exception handling and the authentication guards before exposing the API. Signature verification uses rawBody; providers may require specific headers and timestamp checks. [17, 18]
+[P style=Heading2] Product metadata in the Next.js route
+[P style=Code] export async function generateMetadata({ params }) {
+[P style=Code]   const { slug } = await params;
+[P style=Code]   const product = await getPublishedProduct(slug);
+[P style=Code]   if (!product) notFound();
+[P style=Code]   return {
+[P style=Code]     title: product.seo.title,
+[P style=Code]     description: product.seo.description,
+[P style=Code]     alternates: { canonical: product.canonicalUrl },
+[P style=Code]     openGraph: { images: [product.shareImageUrl] }
+[P style=Code]   };
+[P style=Code] }
+[P style=Code] // Render visible product data and JSON-LD from the same record.
+[P style=Code] // Escape '<' in serialized JSON-LD before script insertion.
+[P style=Small] 
+[P style=Heading2] Transactional publishing pattern
+[P style=Code] await db.transaction(async (tx) => {
+[P style=Code]   const p = await updateWithExpectedVersion(tx, input);
+[P style=Code]   await insertOutbox(tx, {
+[P style=Code]     type: 'product.updated', aggregateId: p.id,
+[P style=Code]     aggregateVersion: p.version
+[P style=Code]   });
+[P style=Code] });
+[P style=Code] // Worker: dedupe -> refresh search -> expire cache -> update feed.
+[P style=Code] // Store per-step success and retry incomplete work only.
+[P style=Small] 
+[P style=Small] These are starter patterns, not a complete application. Implement the full DTOs, migrations, authorization, adapters and tests specified in this guide. A signed internal revalidation request should be authenticated before calling revalidateTag(tag, { expire: 0 }) for critical catalog changes on a compatible pinned release. [4, 5]
+[P style=] 
+
+[P style=Heading1] 29 Source references for payments SEO and security
+[P style=] Official references reviewed on 30 October 2026. Product eligibility, framework behavior and provider terms can change; verify the selected versions and signed merchant contract at implementation. Bracketed numbers in the guide refer to this list. Proposed schedules, limits and engineering choices are project recommendations.
+[P style=] 1 Payoneer Checkout
+[P style=Small] Eligibility, supported checkout methods and developer documentation entry point.
+[P style=Small] https://www.payoneer.com/checkout/
+[P style=] 2 Payoneer Request a Payment
+[P style=Small] Business-payment use and consumer ecommerce limitation.
+[P style=Small] https://pages.payoneer.com/request-payment-worldwide/?Placement=V1
+[P style=] 3 Safepay services and API
+[P style=Small] Pakistan merchant acquiring option and integration documentation.
+[P style=Small] https://safepay.pk/legal/content/services-agreement
+[P style=Small] https://apidocs.getsafepay.com/
+[P style=] 4 Next.js metadata
+[P style=Small] Server metadata and social preview conventions.
+[P style=Small] https://nextjs.org/docs/app/api-reference/functions/generate-metadata
+[P style=] 5 Next.js cache invalidation
+[P style=Small] revalidateTag behavior and immediate expiry option.
+[P style=Small] https://nextjs.org/docs/app/api-reference/functions/revalidateTag
+[P style=] 6 Google ecommerce navigation
+[P style=Small] Crawlable category and product relationships.
+[P style=Small] https://developers.google.com/search/docs/specialty/ecommerce/help-google-understand-your-ecommerce-site-structure
+[P style=] 7 Google merchant listings
+[P style=Small] Product and Offer eligibility and price and availability consistency.
+[P style=Small] https://developers.google.com/search/docs/appearance/structured-data/merchant-listing
+[P style=] 8 shadcn data tables
+[P style=Small] Component composition with TanStack Table.
+[P style=Small] https://ui.shadcn.com/docs/components/radix/table
+[P style=] 9 OWASP authentication
+[P style=Small] Login, recovery, throttling and sensitive account operations.
+[P style=Small] https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+[P style=] 10 OWASP transaction authorization
+[P style=Small] Server-side authorization and transaction state integrity.
+[P style=Small] https://cheatsheetseries.owasp.org/cheatsheets/Transaction_Authorization_Cheat_Sheet.html
+[P style=] 
+
+[P style=Heading1] 30 Source references for privacy and implementation
+[P style=] 11 Google faceted navigation
+[P style=Small] Crawl control for large filter and parameter spaces.
+[P style=Small] https://developers.google.com/crawling/docs/faceted-navigation
+[P style=] 12 Google product variants
+[P style=Small] ProductGroup, variant URLs and initial HTML recommendations.
+[P style=Small] https://developers.google.com/search/docs/appearance/structured-data/product-variants
+[P style=] 13 Google search spam policies
+[P style=Small] Scaled content abuse and other search-manipulation policies.
+[P style=Small] https://developers.google.com/search/docs/essentials/spam-policies
+[P style=] 14 Google Web Vitals
+[P style=Small] LCP, INP and CLS field performance thresholds.
+[P style=Small] https://web.dev/articles/vitals
+[P style=] 15 UK ICO cookies guidance
+[P style=Small] Essential cookies, optional tracking and customer choices.
+[P style=Small] https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/cookies-and-similar-technologies/
+[P style=] 16 UK ICO electronic mail marketing
+[P style=Small] Consent, limited exceptions and unsubscribe requirements.
+[P style=Small] https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/electronic-and-telephone-marketing/electronic-mail-marketing/
+[P style=] 17 NestJS validation
+[P style=Small] Global validation pipes and DTO allowlisting.
+[P style=Small] https://docs.nestjs.com/techniques/validation
+[P style=] 18 NestJS raw body
+[P style=Small] Raw request bytes for payment-provider webhook verification.
+[P style=Small] https://docs.nestjs.com/faq/raw-body
+[P style=] 19 Tailwind CSS with Next.js
+[P style=Small] Official framework installation guide.
+[P style=Small] https://tailwindcss.com/docs/installation/framework-guides/nextjs
+[P style=] 20 shadcn with Next.js
+[P style=Small] Component installation and application setup.
+[P style=Small] https://ui.shadcn.com/docs/installation/next
+[P style=] 21 Gmail sender guidelines
+[P style=Small] Authentication, bulk sender requirements and unsubscribe support.
+[P style=Small] https://support.google.com/mail/answer/81126
