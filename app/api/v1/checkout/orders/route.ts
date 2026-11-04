@@ -1,4 +1,22 @@
-import { databaseConfigured } from "../../../../lib/db";
-import { CheckoutError,createCheckoutOrder,type Delivery } from "../../../../lib/checkout-orders";
-type Body={items?:Array<{productId?:unknown;quantity?:unknown}>;delivery?:Partial<Record<keyof Delivery,unknown>>};
-export async function POST(request:Request){if(!databaseConfigured())return Response.json({code:"DATABASE_NOT_CONFIGURED",message:"Order submission will activate when PostgreSQL is connected."},{status:503});const key=request.headers.get("idempotency-key");if(!key||!/^[0-9a-f-]{36}$/i.test(key))return Response.json({code:"INVALID_IDEMPOTENCY_KEY",message:"A valid checkout key is required."},{status:400});let body:Body;try{body=await request.json()}catch{return Response.json({code:"INVALID_JSON",message:"Request body must be valid JSON."},{status:400})}if(!Array.isArray(body.items)||body.items.length<1||body.items.length>50)return Response.json({code:"INVALID_CART",message:"Your cart is empty or too large."},{status:400});const seen=new Set<number>();const items=[];for(const raw of body.items){const productId=Number(raw.productId),quantity=Number(raw.quantity);if(!Number.isInteger(productId)||!Number.isInteger(quantity)||quantity<1||quantity>20||seen.has(productId))return Response.json({code:"INVALID_ITEM",message:"Cart items must be unique with quantities from 1 to 20."},{status:400});seen.add(productId);items.push({productId,quantity})}const source=body.delivery??{};const value=(key:keyof Delivery,max:number)=>typeof source[key]==="string"?(source[key] as string).trim().slice(0,max):"";const delivery:Delivery={email:value("email",254).toLowerCase(),phone:value("phone",30),firstName:value("firstName",80),lastName:value("lastName",80),street:value("street",200),city:value("city",100),postalCode:value("postalCode",20)};if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery.email)||!delivery.phone||!delivery.firstName||!delivery.lastName||!delivery.street||!delivery.city)return Response.json({code:"INVALID_DELIVERY",message:"Please complete all required delivery details."},{status:400});try{return Response.json(await createCheckoutOrder(items,delivery,key),{status:201})}catch(error){if(error instanceof CheckoutError)return Response.json({code:error.code,message:error.message},{status:error.status});return Response.json({code:"ORDER_FAILED",message:"We could not place the order. Please try again."},{status:500})}}
+import { createCheckoutOrder, type Delivery } from "../../../../lib/checkout-orders";
+import { cartLines } from "../../../../lib/checkout-validation";
+import { getCustomerSession } from "../../../../lib/customer-auth";
+import { apiError, checkOrigin, CommerceError, readJson } from "../../../../lib/api-errors";
+import { UUID_PATTERN } from "../../../../lib/catalog-types";
+export async function POST(request:Request){
+  try{
+    checkOrigin(request);
+    const key=request.headers.get("idempotency-key");
+    if(!key || !UUID_PATTERN.test(key))throw new CommerceError("A valid checkout key is required.");
+    const body=await readJson(request),items=cartLines(body.items);
+    const source=body.delivery&&typeof body.delivery==="object"?body.delivery as Record<string,unknown>:{};
+    const value=(key:keyof Delivery,max:number)=>typeof source[key]==="string"?(source[key] as string).trim().slice(0,max):"";
+    const delivery:Delivery={email:value("email",254).toLowerCase(),phone:value("phone",30),firstName:value("firstName",80),lastName:value("lastName",80),street:value("street",200),city:value("city",100),postalCode:value("postalCode",20)};
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery.email)||!delivery.phone||!delivery.firstName||!delivery.lastName||!delivery.street||!delivery.city)throw new CommerceError("Please complete all required delivery details.");
+    if(body.paymentMethod!=="cod"&&body.paymentMethod!=="raast")throw new CommerceError("Choose a valid payment method.");
+    if(typeof body.expectedTotalMinor!=="number"||!Number.isSafeInteger(body.expectedTotalMinor)||body.expectedTotalMinor<0)throw new CommerceError("Refresh your cart totals before ordering.");
+    const session=await getCustomerSession();
+    const userId=session&&session.email===delivery.email?session.userId:null;
+    return Response.json(await createCheckoutOrder(items,delivery,key,body.paymentMethod,userId,body.expectedTotalMinor),{status:201});
+  }catch(error){return apiError(error);}
+}

@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server";
-import { databaseConfigured } from "../../../../lib/db";
 import { getAdminSession } from "../../../../lib/admin-session";
-import { createAdminProduct,listAdminProducts,type AdminProduct } from "../../../../lib/products-repository";
-function unavailable(){return NextResponse.json({error:"PostgreSQL is not configured.",code:"DATABASE_NOT_CONFIGURED"},{status:503})}
-export async function GET(){if(!(await getAdminSession()))return NextResponse.json({error:"Unauthorized"},{status:401});if(!databaseConfigured())return unavailable();try{return NextResponse.json({products:await listAdminProducts()})}catch{return NextResponse.json({error:"Unable to load products."},{status:500})}}
-export async function POST(request:Request){if(!(await getAdminSession()))return NextResponse.json({error:"Unauthorized"},{status:401});if(!databaseConfigured())return unavailable();let body:Record<string,unknown>;try{body=await request.json()}catch{return NextResponse.json({error:"Invalid request."},{status:400})}const title=typeof body.title==="string"?body.title.trim().slice(0,160):"";const slug=typeof body.slug==="string"?body.slug.trim().toLowerCase():"";const sku=typeof body.sku==="string"?body.sku.trim().toUpperCase().slice(0,80):"";const priceMinor=Number(body.priceMinor),onHand=Number(body.onHand);const statuses:AdminProduct["status"][]=["draft","scheduled","published","archived"];const status=statuses.includes(body.status as AdminProduct["status"])?body.status as AdminProduct["status"]:"draft";if(!title||!sku||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||!Number.isSafeInteger(priceMinor)||priceMinor<0||!Number.isSafeInteger(onHand)||onHand<0)return NextResponse.json({error:"Check the product title, slug, SKU, price, and stock."},{status:400});try{return NextResponse.json({id:await createAdminProduct({title,slug,sku,priceMinor,onHand,status})},{status:201})}catch(error){const duplicate=typeof error==="object"&&error!==null&&"code" in error&&(error as {code:string}).code==="23505";return NextResponse.json({error:duplicate?"That slug or SKU already exists.":"Unable to create product."},{status:duplicate?409:500})}}
+import { createAdminProduct, listAdminProducts } from "../../../../lib/products-repository";
+import { productInput } from "../../../../lib/catalog-validation";
+import { apiError, checkOrigin, readJson } from "../../../../lib/api-errors";
+export async function GET() {
+  if (!(await getAdminSession())) return Response.json({error:"Unauthorized"},{status:401});
+  try { return Response.json({products:await listAdminProducts()}); } catch(error) { return apiError(error); }
+}
+export async function POST(request: Request) {
+  if (!(await getAdminSession())) return Response.json({error:"Unauthorized"},{status:401});
+  try { checkOrigin(request); const id = await createAdminProduct(productInput(await readJson(request))); return Response.json({id},{status:201}); } catch(error) { return apiError(error); }
+}

@@ -7,16 +7,24 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "admin:hash-password": "node scripts/hash-admin-password.mjs"
+    "admin:hash-password": "node scripts/hash-admin-password.mjs",
+    "db:migrate": "node scripts/migrate.mjs",
+    "test:commerce": "node scripts/test-commerce.mjs",
+    "test:chatbot": "node scripts/test-chatbot.mjs"
   },
   "dependencies": {
     "@types/pg": "^8.23.1",
+    "embla-carousel-autoplay": "^8.6.0",
+    "embla-carousel-react": "^8.6.0",
+    "lucide-react": "^1.68.0",
     "next": "16.4.3",
     "pg": "^8.23.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

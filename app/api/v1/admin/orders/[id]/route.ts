@@ -1,8 +1,21 @@
-import { NextResponse } from "next/server";
-import { databaseConfigured } from "../../../../../lib/db";
 import { getAdminSession } from "../../../../../lib/admin-session";
 import { getAdminOrder,updateAdminOrder } from "../../../../../lib/orders-repository";
+import { apiError, checkOrigin, CommerceError, readJson } from "../../../../../lib/api-errors";
+import { UUID_PATTERN } from "../../../../../lib/catalog-types";
 type Context={params:Promise<{id:string}>};
-function validId(id:string){return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)}
-export async function GET(_:Request,{params}:Context){if(!(await getAdminSession()))return NextResponse.json({error:"Unauthorized"},{status:401});if(!databaseConfigured())return NextResponse.json({error:"Database unavailable"},{status:503});const{id}=await params;if(!validId(id))return NextResponse.json({error:"Invalid order ID"},{status:400});try{const order=await getAdminOrder(id);return order?NextResponse.json({order}):NextResponse.json({error:"Order not found"},{status:404})}catch{return NextResponse.json({error:"Unable to load order"},{status:500})}}
-export async function PATCH(request:Request,{params}:Context){if(!(await getAdminSession()))return NextResponse.json({error:"Unauthorized"},{status:401});if(!databaseConfigured())return NextResponse.json({error:"Database unavailable"},{status:503});const{id}=await params;if(!validId(id))return NextResponse.json({error:"Invalid order ID"},{status:400});let body:Record<string,unknown>;try{body=await request.json()}catch{return NextResponse.json({error:"Invalid request"},{status:400})}const orderStatuses=["pending","confirmed","cancelled","completed"],paymentStatuses=["unpaid","pending","paid","refunded","failed"],fulfillmentStatuses=["unfulfilled","processing","packed","shipped","delivered","returned"];const input={orderStatus:typeof body.orderStatus==="string"&&orderStatuses.includes(body.orderStatus)?body.orderStatus:undefined,paymentStatus:typeof body.paymentStatus==="string"&&paymentStatuses.includes(body.paymentStatus)?body.paymentStatus:undefined,fulfillmentStatus:typeof body.fulfillmentStatus==="string"&&fulfillmentStatuses.includes(body.fulfillmentStatus)?body.fulfillmentStatus:undefined};if(!input.orderStatus&&!input.paymentStatus&&!input.fulfillmentStatus)return NextResponse.json({error:"No valid status supplied"},{status:400});try{return await updateAdminOrder(id,input)?NextResponse.json({updated:true}):NextResponse.json({error:"Order not found"},{status:404})}catch{return NextResponse.json({error:"Unable to update order"},{status:500})}}
+export async function GET(_:Request,{params}:Context){
+  if(!(await getAdminSession()))return Response.json({error:"Unauthorized"},{status:401});
+  try{const{id}=await params;if(!UUID_PATTERN.test(id))throw new CommerceError("Invalid order ID");const order=await getAdminOrder(id);if(!order)throw new CommerceError("Order not found",404);return Response.json({order});}catch(error){return apiError(error);}
+}
+export async function PATCH(request:Request,{params}:Context){
+  if(!(await getAdminSession()))return Response.json({error:"Unauthorized"},{status:401});
+  try{
+    checkOrigin(request);const{id}=await params;if(!UUID_PATTERN.test(id))throw new CommerceError("Invalid order ID");const body=await readJson(request);
+    const allowed={orderStatus:["pending","confirmed","cancelled","completed"],paymentStatus:["unpaid","pending","paid","refunded","failed"],fulfillmentStatus:["unfulfilled","processing","packed","shipped","delivered","returned"]};
+    const input:{orderStatus?:string;paymentStatus?:string;fulfillmentStatus?:string}={};
+    for(const key of Object.keys(allowed) as Array<keyof typeof allowed>){if(body[key]!==undefined){if(typeof body[key]!=="string"||!allowed[key].includes(body[key] as string))throw new CommerceError("Invalid status.");input[key]=body[key] as string;}}
+    if(!Object.keys(input).length)throw new CommerceError("No status supplied.");
+    if(!await updateAdminOrder(id,input))throw new CommerceError("Order not found",404);
+    return Response.json({order:await getAdminOrder(id)});
+  }catch(error){return apiError(error);}
+}
