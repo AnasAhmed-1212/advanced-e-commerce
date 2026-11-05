@@ -123,6 +123,21 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Import this repository with the **Next.js** framework preset. Use `npm run build` and the default output directory.
+2. In Supabase, open **Connect** and copy the **Transaction pooler** PostgreSQL URI (port `6543`). Copy the exact host and username provided there; the pooler username normally includes the project reference. Insert your database password, URL-encoding special characters. Supabase recommends transaction pooling for serverless connections; the direct host may require IPv6.
+3. In Vercel **Project → Settings → Environment Variables**, add `DATABASE_URL` with that complete URI for **Production**, and for **Preview** if needed. Paste the value without surrounding quotes. Keep the provider's TLS parameters and leave `DATABASE_SSL=false` when TLS is configured in the URI.
+4. Add the other values from your local environment: `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CUSTOMER_SESSION_SECRET`, `GEMINI_API_KEY`, and `GEMINI_MODEL`. These enable admin login, customer accounts, and the assistant. Never prefix secrets with `NEXT_PUBLIC_`. Your ignored `.env.local` is not automatically uploaded.
+5. If this points to a new database, apply the migrations with `npm run db:migrate` from a trusted local environment configured for that database. An existing migrated Supabase database does not need to be recreated.
+6. **Redeploy** after changing environment variables; they apply to new deployments.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If the storefront displays “We’ll be right back”, refresh it and inspect **Vercel → Logs** for `Catalog database request failed`. Only a diagnostic code is logged, never the connection string:
+
+| Code | What to check |
+| --- | --- |
+| `DATABASE_NOT_CONFIGURED` | Add `DATABASE_URL` for the deployment's environment and redeploy. |
+| `ENETUNREACH`, `ENOTFOUND`, `ETIMEDOUT`, `ECONNREFUSED` | Verify the exact pooler host/port, database availability, and network restrictions. |
+| `28P01` | Verify the database password and the pooler username; encode special characters in URI credentials. |
+| `42P01`, `42703` | The configured database is missing a required table or column; apply the project migrations. |
+| Certificate-related code | Check the provider's TLS settings and certificate configuration. |
+
+Sources: [Supabase database connections](https://supabase.com/docs/guides/database/connecting-to-postgres), [Vercel environment variables](https://vercel.com/docs/environment-variables).

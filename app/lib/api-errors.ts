@@ -1,4 +1,12 @@
 export class CommerceError extends Error { constructor(message: string, public status = 400) { super(message); } }
+export function logCatalogFailure(error: unknown) {
+  const rawCode = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+  const code = error instanceof Error && error.message === "DATABASE_NOT_CONFIGURED"
+    ? "DATABASE_NOT_CONFIGURED"
+    : typeof rawCode === "string" && /^[A-Z0-9_]{2,48}$/.test(rawCode) ? rawCode : "UNKNOWN";
+  // Log only a diagnostic code: error messages can contain connection details.
+  console.error("Catalog database request failed", { code });
+}
 export function isConnectionError(error: unknown) {
   if (!error || typeof error!=="object") return false;
   const code="code" in error?error.code:"";
