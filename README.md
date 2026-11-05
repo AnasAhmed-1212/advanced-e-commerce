@@ -130,7 +130,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 5. If this points to a new database, apply the migrations with `npm run db:migrate` from a trusted local environment configured for that database. An existing migrated Supabase database does not need to be recreated.
 6. **Redeploy** after changing environment variables; they apply to new deployments.
 
-If the storefront displays “We’ll be right back”, refresh it and inspect **Vercel → Logs** for `Catalog database request failed`. Only a diagnostic code is logged, never the connection string:
+If the storefront displays “We’ll be right back”, refresh it and inspect **Vercel → Logs** for `Catalog database request failed`. The log includes a diagnostic code and, for DNS lookup failures, the hostname that failed. Passwords and connection strings are never logged:
 
 | Code | What to check |
 | --- | --- |

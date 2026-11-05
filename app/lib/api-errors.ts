@@ -4,8 +4,14 @@ export function logCatalogFailure(error: unknown) {
   const code = error instanceof Error && error.message === "DATABASE_NOT_CONFIGURED"
     ? "DATABASE_NOT_CONFIGURED"
     : typeof rawCode === "string" && /^[A-Z0-9_]{2,48}$/.test(rawCode) ? rawCode : "UNKNOWN";
-  // Log only a diagnostic code: error messages can contain connection details.
-  console.error("Catalog database request failed", { code });
+  const rawHostname = typeof error === "object" && error !== null && "hostname" in error ? error.hostname : undefined;
+  const hostname = ["ENOTFOUND", "EAI_AGAIN"].includes(code)
+    && typeof rawHostname === "string" && rawHostname.length <= 253
+    && /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(rawHostname)
+    ? rawHostname : undefined;
+  // DNS errors expose only the lookup hostname, never credentials or the URI.
+  // Do not log the full error: its message can contain connection details.
+  console.error("Catalog database request failed", { code, ...(hostname ? { hostname } : {}) });
 }
 export function isConnectionError(error: unknown) {
   if (!error || typeof error!=="object") return false;
