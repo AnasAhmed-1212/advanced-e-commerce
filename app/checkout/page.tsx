@@ -24,7 +24,7 @@ export default function CheckoutPage(){
     void fetch("/api/v1/checkout/quote",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({items:lines}),signal:controller.signal}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.error||"Unable to refresh totals.");return data as Quote;}).then(value=>{setQuoted({key:cartKey,value});setQuoteError("");}).catch(reason=>{if(reason.name!=="AbortError"){setQuoted(null);setQuoteError(reason.message);}});
     return()=>controller.abort();
   },[hydrated,cartKey,quoteVersion]);
-  const quote=quoted?.key===cartKey?quoted.value:null,subtotal=quote?.subtotalMinor??Math.round(localSubtotal*100),shipping=quote?.shippingMinor??shippingMinor(subtotal),total=quote?.totalMinor??subtotal+shipping;
+  const quote=quoted?.key===cartKey?quoted.value:null,subtotal=quote?.subtotalMinor??Math.round(localSubtotal*100),shipping=quote?.shippingMinor??shippingMinor(products.filter(product => lines.some(line => line.productId === product.id))),total=quote?.totalMinor??subtotal+shipping;
   async function submitDetails(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!quote)return;setSubmitting(true);setError("");const form=new FormData(event.currentTarget),delivery=Object.fromEntries(["email","phone","firstName","lastName","street","city","postalCode"].map(key=>[key,form.get(key)]));
     const payload={items:lines,delivery,paymentMethod,expectedTotalMinor:quote.totalMinor},signature=JSON.stringify({items:lines,delivery,paymentMethod});if(attempt.current?.signature!==signature)attempt.current={signature,key:crypto.randomUUID()};

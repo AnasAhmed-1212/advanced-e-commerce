@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ALargeSmall, ChevronRight, Grid2X2, Heart, House, ListFilter, Mic, Package, ScanSearch, Search, ShoppingCart, UserRound, X } from "lucide-react";
+import { useCart } from "./cart-context";
 import { useCustomerAccount } from "./customer-account";
 import type { Category } from "./lib/catalog-types";
 import styles from "./store-header.module.css";
@@ -38,6 +39,7 @@ type Props = {
 };
 
 export default function StoreHeader({ categories, category, query, itemCount, favoriteCount, savedOnly, readable, onQueryChange, onSearch, onCategorySelect, onSavedToggle, onReadableToggle }: Props) {
+  const { openCart } = useCart();
   const { account } = useCustomerAccount();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [listening, setListening] = useState(false);
@@ -116,7 +118,7 @@ export default function StoreHeader({ categories, category, query, itemCount, fa
       <div className={styles.actions}>
         <button type="button" className={`${styles.circle} ${styles.saved} ${savedOnly ? styles.savedActive : ""}`} aria-label={`Saved items (${favoriteCount})`} aria-pressed={savedOnly} title="Saved items" onClick={() => { setCategoriesOpen(false); onSavedToggle(); }}><Heart size={17} strokeWidth={1.8} fill={savedOnly ? "currentColor" : "none"}/>{favoriteCount > 0 && <b className={styles.count}>{favoriteCount}</b>}</button>
         <button type="button" className={`${styles.circle} ${readable ? styles.selected : ""}`} aria-label="Larger text" aria-pressed={readable} title="Toggle larger text" onClick={onReadableToggle}><ALargeSmall size={19} strokeWidth={1.8}/></button>
-        <Link className={styles.circle} href="/checkout" aria-label={`Cart with ${itemCount} items`} title="Cart"><ShoppingCart size={19} strokeWidth={1.8}/>{itemCount > 0 && <b className={styles.count}>{itemCount}</b>}</Link>
+        <button type="button" className={styles.circle} onClick={openCart} aria-haspopup="dialog" aria-label={`Cart with ${itemCount} items`} title="Cart"><ShoppingCart size={19} strokeWidth={1.8}/>{itemCount > 0 && <b className={styles.count}>{itemCount}</b>}</button>
         <Link className={styles.signIn} href="/account" aria-label={account?.authenticated ? "My account" : account ? "Sign in" : "Account"}><UserRound size={19} strokeWidth={1.8}/><span>{account?.authenticated ? "My account" : account ? "Sign in" : "Account"}</span></Link>
       </div>
     </div>

@@ -28,6 +28,10 @@ export function productInput(body: Record<string, unknown>, editing = false): Pr
   if (previousPriceMinor != null && (typeof previousPriceMinor !== "number" || !Number.isSafeInteger(previousPriceMinor) || previousPriceMinor <= body.priceMinor || previousPriceMinor > 10000000000)) {
     throw new CommerceError("The previous price must be higher than the current price and at most PKR 100,000,000.");
   }
+  const deliveryChargeMinor = body.deliveryChargeMinor;
+  if (deliveryChargeMinor !== undefined && (typeof deliveryChargeMinor !== "number" || !Number.isSafeInteger(deliveryChargeMinor) || deliveryChargeMinor < 0 || deliveryChargeMinor > 10000000000)) {
+    throw new CommerceError("Enter a valid delivery charge.");
+  }
   if (typeof body.onHand !== "number" || !Number.isSafeInteger(body.onHand) || body.onHand < 0 || body.onHand > 1000000) throw new CommerceError("Stock must be a whole number between 0 and 1,000,000.");
   const status = body.status as ProductStatus;
   if (!["draft", "published", "archived"].includes(status)) throw new CommerceError("Choose a valid product status.");
@@ -35,5 +39,5 @@ export function productInput(body: Record<string, unknown>, editing = false): Pr
   const description = text(body, "description", 20000);
   if (status === "published" && (!body.imageIds.length || !description)) throw new CommerceError("Add a description and at least one image before publishing.");
   if (editing && (typeof body.version !== "number" || !Number.isSafeInteger(body.version) || body.version < 1)) throw new CommerceError("Reload this product before editing.");
-  return { title, slug: slug(body, title), description, categoryId, priceMinor: body.priceMinor, previousPriceMinor, onHand: body.onHand, status, imageIds: body.imageIds as string[], version: editing ? body.version as number : undefined };
+  return { title, slug: slug(body, title), description, categoryId, priceMinor: body.priceMinor, previousPriceMinor, deliveryChargeMinor, onHand: body.onHand, status, imageIds: body.imageIds as string[], version: editing ? body.version as number : undefined };
 }

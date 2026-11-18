@@ -4,8 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { Heart, Package, ScanSearch, ShoppingBag } from "lucide-react";
 import { useCart } from "./cart-context";
-import { FREE_DELIVERY_THRESHOLD_MINOR } from "./lib/shipping";
-import { money as orderMoney, productMoney as money } from "./catalog";
+import { productMoney as money } from "./catalog";
 import type { ShopProduct } from "./lib/catalog-types";
 import ImageLightbox from "./image-lightbox";
 import styles from "./product-ui.module.css";
@@ -29,13 +28,13 @@ export default function ProductCard({ product,saved,onSave }: { product: ShopPro
       </Link>
       <button type="button" className={`${styles.favorite} deal-heart`} onClick={onSave} aria-label={`${saved ? "Unsave" : "Save"} ${product.name}`} aria-pressed={saved}><Heart size={17} fill={saved ? "currentColor" : "none"}/></button>
       {image && <button type="button" className={styles.quickView} aria-label={`Enlarge ${product.name}`} onClick={() => setViewer(true)}><ScanSearch size={18} strokeWidth={1.6}/></button>}
-      {!live.available && <span className={styles.soldOut}>Out of stock</span>}
+      {live.deliveryChargeMinor === 0 && <span className={styles.deliveryTag}>Free delivery</span>}
+      {!live.available && <span className={`${styles.soldOut} ${live.deliveryChargeMinor === 0 ? styles.withDeliveryTag : ""}`}>Out of stock</span>}
     </div>
     <div className={styles.cardBody}>
       <Link href={`/products/${product.slug}`} className={`${styles.cardName} deal-name`} title={product.name}>{product.name}</Link>
       <strong className={`${styles.cardPrice} deal-price`}>{money(live.price)}</strong>
       {live.previousPriceMinor != null && <del className={styles.previousPrice} aria-label={`Previous price ${money(live.previousPriceMinor/100)}`}>{money(live.previousPriceMinor/100)}</del>}
-      <span className={styles.deliveryTag}>Free delivery{live.priceMinor < FREE_DELIVERY_THRESHOLD_MINOR && ` on orders ${orderMoney(FREE_DELIVERY_THRESHOLD_MINOR/100)}+`}</span>
       <p className={styles.cardOrder}>Min. order: <b>1 piece</b></p>
       <p className={styles.cardMeta}><span>{product.category}</span><span className={live.available ? styles.inStock : ""}>{live.available ? "In stock" : "Unavailable"}</span></p>
       <button type="button" className={`${styles.addButton} deal-add`} disabled={!live.available || full || catalogLoading || Boolean(catalogError)} onClick={() => { addItem(product.id); setAdded(true); }}><ShoppingBag size={14}/>{!live.available ? "Out of stock" : catalogLoading ? "Checking stock…" : catalogError ? "Temporarily unavailable" : full ? "Cart limit reached" : added ? "Added to cart ✓" : "Add to cart"}</button>

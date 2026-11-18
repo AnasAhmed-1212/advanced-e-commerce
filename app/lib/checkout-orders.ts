@@ -3,13 +3,14 @@ import { createHash, randomBytes } from "node:crypto";
 import { withTransaction } from "./db";
 import { CommerceError } from "./api-errors";
 import { getPaymentSettings } from "./payment-settings";
-import { shippingMinor, type CartLine } from "./checkout-validation";
+import type { CartLine } from "./checkout-validation";
+import { DEFAULT_DELIVERY_CHARGE_MINOR, shippingMinor } from "./shipping";
 import { receiptToken } from "./order-receipt";
 import type { PaymentSettings } from "./catalog-types";
 
 export type Delivery={email:string;phone:string;firstName:string;lastName:string;street:string;city:string;postalCode:string};
 export class CheckoutError extends CommerceError { constructor(public code:string,message:string,status=400){super(message,status);} }
-type CheckoutProduct={id:string;title:string;variant_id:string;sku:string;price_minor:string;currency:string};
+type CheckoutProduct={id:string;title:string;variant_id:string;sku:string;price_minor:string;delivery_charge_minor:string|null;currency:string};
 export async function createCheckoutOrder(lines:CartLine[],delivery:Delivery,idempotencyKey:string,paymentMethod:"cod"|"raast"="cod",userId:string|null=null,expectedTotalMinor?:number){
   const requestHash=createHash("sha256").update(JSON.stringify({lines,delivery,paymentMethod})).digest("hex");
   const currentPaymentSettings=paymentMethod==="raast"?await getPaymentSettings():null;
@@ -26,10 +27,10 @@ export async function createCheckoutOrder(lines:CartLine[],delivery:Delivery,ide
     }
     const paymentDetails=currentPaymentSettings;
     if(paymentDetails && !paymentDetails.raastEnabled)throw new CheckoutError("PAYMENT_UNAVAILABLE","Raast is not available. Choose cash on delivery.",409);
-    const resolved: Array<CheckoutProduct & {quantity:number;unitPriceMinor:number;lineTotalMinor:number}> = [];
+    const resolved: Array<CheckoutProduct & {quantity:number;unitPriceMinor:number;lineTotalMinor:number;deliveryChargeMinor:number}> = [];
     const allocations: Array<{variantId:string;warehouseId:string;quantity:number}>=[];
     for(const line of lines){
-      const product=await client.query<CheckoutProduct>(`SELECT p.id,p.title,v.id AS variant_id,v.sku,v.price_minor,v.currency FROM products p JOIN categories c ON c.id=p.category_id JOIN LATERAL (SELECT * FROM product_variants WHERE product_id=p.id AND active=true ORDER BY created_at,id LIMIT 1) v ON true WHERE p.id=$1 AND p.status='published' AND c.is_active=true FOR SHARE OF p,c`,[line.productId]);
+      const product=await client.query<CheckoutProduct>(`SELECT p.id,p.title,v.id AS variant_id,v.sku,v.price_minor,v.currency,to_jsonb(v)->>'delivery_charge_minor' AS delivery_charge_minor FROM products p JOIN categories c ON c.id=p.category_id JOIN LATERAL (SELECT * FROM product_variants WHERE product_id=p.id AND active=true ORDER BY created_at,id LIMIT 1) v ON true WHERE p.id=$1 AND p.status='published' AND c.is_active=true FOR SHARE OF p,c`,[line.productId]);
       const item=product.rows[0];
       if(!item)throw new CheckoutError("PRODUCT_UNAVAILABLE","A product in your cart is no longer available.",409);
       await client.query("SELECT id FROM product_variants WHERE id=$1 FOR UPDATE",[item.variant_id]);
@@ -42,10 +43,10 @@ export async function createCheckoutOrder(lines:CartLine[],delivery:Delivery,ide
         if(!remaining)break;
       }
       if(item.currency!=="PKR")throw new CheckoutError("INVALID_CURRENCY","This product cannot be checked out in PKR.",409);
-      resolved.push({...item,quantity:line.quantity,unitPriceMinor:Number(item.price_minor),lineTotalMinor:Number(item.price_minor)*line.quantity});
+      resolved.push({...item,quantity:line.quantity,unitPriceMinor:Number(item.price_minor),lineTotalMinor:Number(item.price_minor)*line.quantity,deliveryChargeMinor:Number(item.delivery_charge_minor ?? DEFAULT_DELIVERY_CHARGE_MINOR)});
     }
-    const subtotalMinor=resolved.reduce((sum,line)=>sum+line.lineTotalMinor,0),shipping=shippingMinor(subtotalMinor),totalMinor=subtotalMinor+shipping;
-    if(expectedTotalMinor!==undefined&&expectedTotalMinor!==totalMinor)throw new CheckoutError("PRICE_CHANGED","A product price changed. Refresh the cart totals before placing your order.",409);
+    const subtotalMinor=resolved.reduce((sum,line)=>sum+line.lineTotalMinor,0),shipping=shippingMinor(resolved),totalMinor=subtotalMinor+shipping;
+    if(expectedTotalMinor!==undefined&&expectedTotalMinor!==totalMinor)throw new CheckoutError("PRICE_CHANGED","A price or delivery charge changed. Refresh the cart totals before placing your order.",409);
     const orderNumber=`NS-${new Date().toISOString().slice(2,10).replaceAll("-","")}-${randomBytes(4).toString("hex").toUpperCase()}`;
     const shippingSnapshot={name:`${delivery.firstName} ${delivery.lastName}`,phone:delivery.phone,street:delivery.street,city:delivery.city,postalCode:delivery.postalCode};
     const order=await client.query<{id:string}>(`INSERT INTO orders(order_number,user_id,email_normalized,order_status,payment_status,fulfillment_status,payment_method,currency,subtotal_minor,shipping_minor,tax_minor,total_minor,shipping_snapshot) VALUES($1,$2,$3,'pending',$4,'unfulfilled',$5,'PKR',$6,$7,0,$8,$9) RETURNING id`,[orderNumber,userId,delivery.email,paymentMethod==="raast"?"pending":"unpaid",paymentMethod,subtotalMinor,shipping,totalMinor,JSON.stringify(shippingSnapshot)]);

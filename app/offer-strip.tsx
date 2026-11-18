@@ -3,7 +3,7 @@ import styles from "./offer-strip.module.css";
 
 const offers = [
   { icon: Sparkles, title: "Up to 50% off", detail: "selected offers", highlight: true },
-  { icon: Truck, title: "Free delivery across Pakistan", detail: "on orders Rs 15,000+" },
+  { icon: Truck, title: "Delivery across Pakistan", detail: "see product delivery details" },
   { icon: Banknote, title: "Cash on delivery", detail: "pay at your doorstep" },
   { icon: HeartPulse, title: "Care for every day", detail: "explore medical essentials" },
 ];

@@ -10,4 +10,3 @@ export function cartLines(value: unknown): CartLine[] {
     return {productId,quantity:raw.quantity as number};
   }).sort((a,b)=>a.productId.localeCompare(b.productId));
 }
-export { shippingMinor } from "./shipping";

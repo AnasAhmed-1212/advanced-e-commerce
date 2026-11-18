@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { CustomerAccountProvider } from "./customer-account";
+import CartDrawer from "./cart-drawer";
 import { CartProvider } from "./cart-context";
 import { Suspense } from "react";
 import Chatbot from "./chatbot";
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   // Browser extensions can add attributes to the body before React hydrates.
-  return <html lang="en" data-scroll-behavior="smooth"><body suppressHydrationWarning><CustomerAccountProvider><CartProvider>{children}</CartProvider></CustomerAccountProvider><Suspense fallback={null}><Chatbot/></Suspense></body></html>;
+  return <html lang="en" data-scroll-behavior="smooth"><body suppressHydrationWarning><CustomerAccountProvider><CartProvider>{children}<CartDrawer/></CartProvider></CustomerAccountProvider><Suspense fallback={null}><Chatbot/></Suspense></body></html>;
 }

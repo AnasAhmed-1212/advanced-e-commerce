@@ -1,5 +1,6 @@
-export const FREE_DELIVERY_THRESHOLD_MINOR = 1_500_000;
+export const DEFAULT_DELIVERY_CHARGE_MINOR = 65_000;
 
-export function shippingMinor(subtotalMinor: number) {
-  return subtotalMinor >= FREE_DELIVERY_THRESHOLD_MINOR ? 0 : 65_000;
+// Cart lines contain distinct products. Each product's delivery charge applies once.
+export function shippingMinor(lines: readonly { deliveryChargeMinor: number }[]) {
+  return lines.reduce((sum, line) => sum + line.deliveryChargeMinor, 0);
 }

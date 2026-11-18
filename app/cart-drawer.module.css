@@ -1,0 +1,42 @@
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(100%, 450px);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  background: #fffdf9;
+  color: #25201c;
+  box-shadow: -15px 0 45px #24170730;
+}
+.drawer[open] { animation: enter .22s ease-out; }
+.drawer::backdrop { background: #291b1466; }
+:global(body):has(.drawer[open]) { overflow: hidden; }
+@keyframes enter { from { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .drawer[open] { animation: none; } }
+
+.panel { display: flex; flex-direction: column; height: 100%; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid #eaded3; }
+.header h2 { margin: 0; font-size: 1.6rem; }
+.header h2 span { color: #65564c; font-size: 1rem; font-weight: 500; }
+.icon, .controls button { display: grid; place-items: center; border: 1px solid #e7d8cb; background: #fff; color: inherit; cursor: pointer; }
+.icon { width: 42px; height: 42px; border-radius: 50%; }
+.empty { display: grid; justify-items: center; align-content: center; gap: 18px; flex: 1; padding: 24px; }
+.empty h3 { margin: 0; font-size: 1.4rem; }
+.emptyIcon { display: grid; place-items: center; width: 70px; height: 70px; border-radius: 50%; background: #ffebdc; color: #9e3705; }
+.lines { flex: 1; overflow: auto; overscroll-behavior: contain; list-style: none; margin: 0; padding: 0 24px; }
+.line { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid #eaded3; }
+.art { display: grid; place-items: center; flex: 0 0 72px; height: 72px; border-radius: 9px; background: #f6f0ea; overflow: hidden; }
+.art img { width: 100%; height: 100%; object-fit: contain; }
+.lineInfo { min-width: 0; display: grid; gap: 5px; }
+.lineInfo a { font-weight: 650; overflow-wrap: anywhere; }
+.controls { display: flex; gap: 8px; align-items: center; }
+.controls button { min-width: 32px; min-height: 32px; border-radius: 6px; }
+.controls button:disabled { opacity: .45; cursor: default; }
+.controls .remove { border: 0; background: transparent; text-decoration: underline; }
+.footer { display: grid; gap: 9px; padding: 16px 24px max(20px, env(safe-area-inset-bottom)); border-top: 1px solid #eaded3; }
+.footer div { display: flex; justify-content: space-between; }
+.drawer .primary { display: block; padding: 11px 18px; border-radius: 8px; text-align: center; background: #a63b09; color: #fff; font-weight: 700; }

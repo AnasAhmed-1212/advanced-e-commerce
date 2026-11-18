@@ -14,7 +14,7 @@ export default function ProductActions({product}:{product:ShopProduct}){
   const live=products.find(item=>item.id===product.id)||product,existing=lines.find(line=>line.productId===product.id)?.quantity||0,room=Math.max(0,Math.min(20,live.available)-existing),saved=favorites.includes(product.id);
   useEffect(()=>{setQuantity(current=>Math.max(1,Math.min(current,room)));},[room]);
   const cartFull=!existing&&lines.length>=50,disabled=!room||cartFull||catalogLoading||Boolean(catalogError);
-  function add(buyNow:boolean){if(disabled)return;addItem(product.id,Math.min(quantity,room));setAdded(true);if(buyNow)router.push("/checkout");}
+  function add(buyNow:boolean){if(disabled)return;addItem(product.id,Math.min(quantity,room),!buyNow);setAdded(true);if(buyNow)router.push("/checkout");}
   const enquiry=`Assalam-o-Alaikum, I would like to make an offer or ask about ${product.name} (quantity ${quantity}). Please confirm the details and price.`;
   return <div className={styles.actions}>
     <div className={styles.quantityRow}><label htmlFor="product-quantity">Quantity</label><div className={styles.quantity}><button type="button" aria-label="Decrease quantity" disabled={quantity<=1||disabled} onClick={()=>setQuantity(value=>value-1)}><Minus size={13}/></button><input id="product-quantity" type="number" inputMode="numeric" min={1} max={Math.max(1,room)} disabled={disabled} value={quantity} onChange={event=>setQuantity(Math.max(1,Math.min(room,Number(event.target.value)||1)))}/><button type="button" aria-label="Increase quantity" disabled={quantity>=room||disabled} onClick={()=>setQuantity(value=>value+1)}><Plus size={13}/></button></div><span>{live.available?`${live.available} available`:"Out of stock"}</span></div>

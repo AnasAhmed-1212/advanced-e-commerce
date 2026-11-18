@@ -15,4 +15,6 @@
 .footerBrand img{display:block;width:100%;height:auto}
 
 .previousPrice { color: #5c6470; font-size: .85rem; }
-.deliveryTag { align-self: flex-start; width: fit-content; padding: .2rem .5rem; border-radius: .35rem; background: #e9f7ee; color: #185c33; font-size: .75rem; font-weight: 650; }
+.deliveryTag { position: absolute; top: 8px; left: 8px; pointer-events: none; padding: .2rem .5rem; border-radius: .35rem; background: #e9f7ee; color: #185c33; font-size: .75rem; font-weight: 650; }
+
+.soldOut.withDeliveryTag { top: 34px; }

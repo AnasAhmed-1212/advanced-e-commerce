@@ -138,7 +138,10 @@ try{
   await customer.getByRole("button",{name:"View image 2",exact:true}).click();await expect(customer.locator(".gallery-main img")).toHaveAttribute("src",firstUrl);
   await expect.poll(()=>customer.locator(".gallery-main img").evaluate(image=>image.naturalWidth),{timeout:60000}).toBeGreaterThan(0);
   await customer.getByRole("button",{name:"Increase quantity"}).click();await customer.getByRole("button",{name:"Add to cart",exact:true}).click();
-  await customer.getByRole("link",{name:"Continue to checkout"}).click();await expect(customer.locator(".cart-line")).toHaveCount(1);await customer.reload();await expect(customer.locator(".line-quantity span")).toHaveText("2");
+  const cartDrawer = customer.getByRole("dialog",{name:/Your cart/});
+  await expect(cartDrawer).toBeVisible();
+  await expect(cartDrawer.getByRole("heading",{name:"Your cart (2)"})).toBeVisible();
+  await cartDrawer.getByRole("link",{name:"Continue to checkout",exact:true}).click();await expect(customer.locator(".cart-line")).toHaveCount(1);await customer.reload();await expect(customer.locator(".line-quantity span")).toHaveText("2");
   let submitted,lostResponse=false;
   await customer.route("**/api/v1/checkout/orders",async route=>{
     if(!lostResponse){lostResponse=true;const response=await route.fetch();if(response.status()===201){await route.abort("failed");return;}await route.fulfill({response});return;}
@@ -182,7 +185,7 @@ try{
   await page.getByLabel("Enable Raast bank transfer at checkout").check();
   await page.getByLabel("Account title").fill("Commerce Test Receiver");await page.getByLabel("Raast ID, account number or IBAN").fill("TEST-ACCOUNT-NOT-FOR-PAYMENT");await page.getByLabel("Bank name").fill("Test Bank");
   await page.getByRole("button",{name:"Save payment settings",exact:true}).click();await expect(page.getByText("Payment settings saved.")).toBeVisible();
-  await customer.goto(`${base}/products/${product.slug}`);await customer.getByRole("button",{name:"Add to cart",exact:true}).click();await customer.getByRole("link",{name:"Continue to checkout"}).click();
+  await customer.goto(`${base}/products/${product.slug}`);await customer.getByRole("button",{name:"Add to cart",exact:true}).click();await cartDrawer.getByRole("link",{name:"Continue to checkout",exact:true}).click();
   const raast=await delivery("raast");assert.equal(raast.paymentMethod,"raast");assert.equal(raast.paymentDetails.accountNumber,"TEST-ACCOUNT-NOT-FOR-PAYMENT");
   await customer.getByLabel("Bank transaction / transfer reference").fill("TEST-TRANSFER-REFERENCE-001");await customer.getByRole("button",{name:"Submit transfer reference",exact:true}).click();await expect(customer.getByText("Reference submitted.",{exact:false})).toBeVisible();
   dbOrder=(await testPool.query("SELECT payment_status,payment_reference FROM orders WHERE id=$1",[raast.orderId])).rows[0];assert.equal(dbOrder.payment_status,"pending");assert.equal(dbOrder.payment_reference,"TEST-TRANSFER-REFERENCE-001");
@@ -206,7 +209,7 @@ try{
   const uiProducts=[];
   for(let i=1;i<=8;i++){
     const title=`UI Equipment ${i} Home Care Medical Device`;
-    const result=await adminApi("/api/v1/admin/products","POST",{title,slug:`ui-equipment-${i}`,description:`UI fixture ${i}.\nModel-specific information supplied by the store.`,categoryId:category.id,priceMinor:200000+i*12500,onHand:i===8?0:4,status:"published",imageIds:product.images.map(image=>image.id)});
+    const result=await adminApi("/api/v1/admin/products","POST",{title,slug:`ui-equipment-${i}`,description:`UI fixture ${i}.\nModel-specific information supplied by the store.`,categoryId:category.id,priceMinor:200000+i*12500,deliveryChargeMinor:i===1?0:45000,onHand:i===8?0:4,status:"published",imageIds:product.images.map(image=>image.id)});
     assert.equal(result.response.status(),201);uiProducts.push({id:result.body.id,title,slug:`ui-equipment-${i}`});
   }
   await customer.addInitScript(()=>{
@@ -217,6 +220,18 @@ try{
   await expect(customer.locator(".deal-grid > .deal-card")).toHaveCount(9);
   assert.equal(await customer.locator(".deal-grid").evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(/\s+/).length),5);
   const firstCard=customer.locator(".deal-grid > .deal-card").filter({hasText:uiProducts[0].title});
+  await expect(firstCard.locator(".deal-image").getByText("Free delivery",{exact:true})).toBeVisible();
+  const paidCard = customer.locator(".deal-grid > .deal-card").filter({hasText:uiProducts[1].title});
+  await expect(paidCard.getByText("Free delivery",{exact:true})).toHaveCount(0);
+  await firstCard.getByRole("button",{name:"Add to cart",exact:true}).click();
+  await expect(cartDrawer.getByText("Free",{exact:true})).toBeVisible();
+  await cartDrawer.getByRole("button",{name:"Remove "+uiProducts[0].title,exact:true}).click();
+  await expect(cartDrawer.getByRole("heading",{name:"Your cart is empty"})).toBeVisible();
+  await customer.keyboard.press("Escape");
+  await expect(cartDrawer).toHaveCount(0);
+  const mixed = await customer.request.post("/api/v1/checkout/quote",{data:{items:[{productId:uiProducts[0].id,quantity:1},{productId:uiProducts[1].id,quantity:2}]}});
+  assert.equal(mixed.status(),200);
+  assert.equal((await mixed.json()).shippingMinor,45000);
   await firstCard.scrollIntoViewIfNeeded();await firstCard.locator(".deal-image a").hover({position:{x:30,y:35}});
   await expect.poll(()=>firstCard.locator(".deal-image img").evaluate(image=>getComputedStyle(image).transform)).not.toBe("none");
   assert(await firstCard.locator(".deal-image").evaluate(el=>el.style.getPropertyValue("--zoom-x").length>0));
