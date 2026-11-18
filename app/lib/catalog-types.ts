@@ -1,9 +1,9 @@
 export type MediaImage = { id: string; url: string; width: number; height: number; sizeBytes: number };
 export type Category = { id: string; name: string; slug: string; description: string; image: MediaImage | null; isActive: boolean; productCount: number };
 export type ProductStatus = "draft" | "published" | "archived";
-export type AdminProduct = { id: string; title: string; slug: string; description: string; categoryId: string | null; categoryName: string; status: ProductStatus; priceMinor: number; currency: string; onHand: number; reserved: number; images: MediaImage[]; version: number };
-export type ShopProduct = { id: string; name: string; slug: string; description: string; categoryId: string; category: string; price: number; priceMinor: number; available: number; images: MediaImage[] };
-export type ProductInput = { title: string; slug: string; description: string; categoryId: string; priceMinor: number; onHand: number; status: ProductStatus; imageIds: string[]; version?: number };
+export type AdminProduct = { id: string; title: string; slug: string; description: string; categoryId: string | null; categoryName: string; status: ProductStatus; priceMinor: number; previousPriceMinor: number | null; currency: string; onHand: number; reserved: number; images: MediaImage[]; version: number };
+export type ShopProduct = { id: string; name: string; slug: string; description: string; categoryId: string; category: string; price: number; priceMinor: number; previousPriceMinor: number | null; available: number; images: MediaImage[] };
+export type ProductInput = { title: string; slug: string; description: string; categoryId: string; priceMinor: number; previousPriceMinor?: number | null; onHand: number; status: ProductStatus; imageIds: string[]; version?: number };
 export type CategoryInput = { name: string; slug: string; description: string; imageId: string | null; isActive: boolean };
 export type PaymentSettings = { raastEnabled: boolean; accountTitle: string; accountNumber: string; bankName: string; instructions: string };
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

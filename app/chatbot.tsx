@@ -14,6 +14,7 @@ const suggestions = [
   { label: "Nebulizers", question: "Help me choose a nebulizer for home use." },
   { label: "BP monitors", question: "What should I check before buying a blood pressure machine?" },
   { label: "Sugar checkers", question: "Help me choose a glucometer and compatible sugar test strips." },
+  { label: "Mobility aids", question: "What wheelchairs, walkers or other mobility aids are currently available?" },
   { label: "اردو میں پوچھیں", question: "مجھے بلڈ پریشر مشین منتخب کرنے میں مدد دیں۔" },
 ];
 
@@ -89,7 +90,7 @@ export default function Chatbot() {
       </header>
       <div className={styles.languages}><span className={styles.statusDot}/>Here to help you choose<span>EN · اردو · Roman Urdu</span></div>
       <div ref={log} className={styles.conversation} role="log" aria-label="Chat messages" aria-live="polite" aria-relevant="additions text" aria-busy={Boolean(pending)}>
-        <div className={styles.intro}><span><PackageSearch size={25} strokeWidth={1.6}/></span><h3>Equipment, made simpler.</h3><p>Assalam-o-Alaikum! Looking for a nebulizer, BP monitor or sugar checker? I can help you compare options and find the right questions to ask.</p><p className={styles.urdu} lang="ur" dir="rtl">آپ اردو یا رومن اردو میں بھی سوال کر سکتے ہیں۔</p></div>
+        <div className={styles.intro}><span><PackageSearch size={25} strokeWidth={1.6}/></span><h3>Equipment, made simpler.</h3><p>Assalam-o-Alaikum! Ask me what we sell, compare listed equipment, or check current prices and stock.</p><p className={styles.urdu} lang="ur" dir="rtl">آپ اردو یا رومن اردو میں بھی سوال کر سکتے ہیں۔</p></div>
         {!messages.length && !pending && <div className={styles.suggestions}>{suggestions.map(suggestion => <button key={suggestion.label} type="button" onClick={() => void send(suggestion.question)}>{suggestion.label}<ChevronRight size={13}/></button>)}</div>}
         {messages.map((message,index) => <div key={index} className={`${styles.message} ${message.role === "user" ? styles.user : styles.assistant}`}>
           <span className={styles.speaker}>{message.role === "user" ? "You" : `${STORE_NAME} AI`}</span><p dir="auto">{message.content}</p>

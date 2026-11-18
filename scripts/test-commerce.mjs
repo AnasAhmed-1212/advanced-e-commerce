@@ -48,6 +48,7 @@ try{
   for(let i=0;i<80;i++){if(server.exitCode!==null)throw new Error("Test server exited.");try{if((await fetch(`${base}/api/v1/catalog`)).ok){ready=true;break;}}catch{}await pause(500);}
   assert(ready,"Test server did not start");
   assert.equal((await fetch(`${base}/api/v1/admin/categories`)).status,401);
+  assert.equal((await fetch(new URL("/api/v1/admin/customers",base))).status,401);
   const browserPath=process.env.COMMERCE_BROWSER_PATH||["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe","C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"].find(file=>fs.existsSync(file));
   browser=await chromium.launch({headless:true,...(browserPath?{executablePath:browserPath}:{})});
   const admin=await browser.newContext({baseURL:base,viewport:{width:1440,height:1000}}),page=await admin.newPage();
@@ -62,6 +63,17 @@ try{
     const response=await admin.request.fetch(`${base}${route}`,{method,...(data!==undefined?{data}:{}),headers:{origin:base}});
     const body=await response.json();return{response,body};
   }
+  const customerEmail = "customer-account-test@example.invalid";
+  const registeredContext = await browser.newContext({baseURL:base});
+  const registration = await registeredContext.request.post("/api/v1/account/register", { data: {email:customerEmail,password:testPassword+"a1",firstName:"Test",lastName:"Customer"} });
+  assert.equal(registration.status(),201);
+  const customerPage = await registeredContext.newPage();
+  await customerPage.goto(base);
+  await expect(customerPage.locator("[data-store-header]").getByRole("link",{name:"My account",exact:true})).toBeVisible();
+  await expect(customerPage.locator("[data-store-header]").getByRole("link",{name:"Sign in",exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"Customers",exact:true}).click();
+  await expect(page.getByRole("cell",{name:customerEmail,exact:true})).toBeVisible();
+  await registeredContext.close();
   await page.getByRole("button",{name:"Categories",exact:true}).click();
   await page.getByRole("button",{name:"+ Add category",exact:true}).click();
   const categoryDialog=page.getByRole("dialog");
@@ -87,7 +99,8 @@ try{
   const dialog=page.getByRole("dialog");
   await dialog.getByLabel("Product name").fill("Test Everyday Product");
   await dialog.getByLabel("Description",{exact:true}).fill("A real product description.\nSecond line with useful details.");
-  await dialog.getByLabel("Price (PKR)").fill("1299.50");
+  await dialog.getByLabel("Current price (PKR)",{exact:true}).fill("1299.50");
+  await dialog.getByLabel("Previous price (PKR, optional)",{exact:true}).fill("1499.50");
   await dialog.getByLabel("Total stock").fill("3");
   await dialog.getByLabel("Visibility").selectOption("published");
   assert.equal(await dialog.getByLabel("SKU",{exact:true}).count(),0);
@@ -100,7 +113,7 @@ try{
   await dialog.getByRole("button",{name:"Save product",exact:true}).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   let product=(await adminApi("/api/v1/admin/products")).body.products[0];
-  assert.equal(product.images[0].url,secondUrl);assert.equal(product.images[1].url,firstUrl);assert.equal(product.priceMinor,129950);assert.equal(product.categoryId,category.id);
+  assert.equal(product.images[0].url,secondUrl);assert.equal(product.images[1].url,firstUrl);assert.equal(product.priceMinor,129950);assert.equal(product.previousPriceMinor,149950);assert.equal(product.categoryId,category.id);
   fs.mkdirSync("test-results",{recursive:true});await page.screenshot({path:"test-results/admin-products.png",fullPage:true});
   const productInput={title:product.title,slug:product.slug,description:product.description,categoryId:product.categoryId,priceMinor:product.priceMinor,onHand:3,status:"published",imageIds:product.images.map(i=>i.id),version:product.version};
   assert.equal((await adminApi(`/api/v1/admin/products/${product.id}`,"PATCH",productInput)).response.status(),200);
@@ -110,7 +123,7 @@ try{
   const invalidForm=new FormData();invalidForm.set("file",new Blob(["<svg xmlns='http://www.w3.org/2000/svg'></svg>"],{type:"image/svg+xml"}),"invalid.svg");
   const cookie=(await admin.cookies()).map(c=>`${c.name}=${c.value}`).join("; ");
   assert.equal((await fetch(`${base}/api/v1/admin/uploads`,{method:"POST",headers:{cookie,origin:base},body:invalidForm})).status,400);
-  const shop=await browser.newContext({baseURL:base,viewport:{width:1440,height:1000}}),customer=await shop.newPage();customer.on("pageerror",error=>messages.push(error.message));
+  const shop=await browser.newContext({baseURL:base,viewport:{width:1440,height:1000}}),customer=await shop.newPage();customer.on("pageerror",error=>messages.push(error.message));debugPage=customer;
   const email="customer@commerce-test.invalid",customerPassword=randomBytes(16).toString("base64url")+"7";
   await customer.goto(`${base}/account`);await customer.getByRole("button",{name:"Create account",exact:true}).first().click();
   await customer.getByLabel("First name").fill("Test");await customer.getByLabel("Last name").fill("Customer");await customer.getByLabel("Email address").fill(email);await customer.getByLabel("Password",{exact:true}).fill(customerPassword);
@@ -136,7 +149,11 @@ try{
     await customer.getByRole("button",{name:"Continue to delivery",exact:true}).click();
     for(const[label,value]of [["Email address",email],["Phone number","03000000000"],["First name","Test"],["Last name","Customer"],["Street address","Test address"],["City","Karachi"],["Postal code","74000"]])await customer.getByLabel(label,{exact:true}).fill(value);
     await customer.getByRole("radio",{name:method==="cod"?/Cash on delivery/:/Raast bank transfer/}).check();
-    await customer.getByRole("button",{name:"Place order",exact:true}).click();await expect(customer.getByText("Order received",{exact:true})).toBeVisible();
+    await customer.getByRole("button",{name:"Place order",exact:true}).click();
+    await expect(customer.getByText("Order received",{exact:true})).toBeVisible().catch(async error => {
+      const message = await customer.locator(".checkout-main .form-error").allTextContents();
+      throw new Error(message.join(" ") || error.message);
+    });
     return customer.evaluate(()=>JSON.parse(sessionStorage.getItem("northstar-order-confirmation")));
   }
   const cod=await delivery("cod");assert.equal(cod.totalMinor,324900);assert.equal(cod.paymentMethod,"cod");

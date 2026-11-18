@@ -30,7 +30,7 @@ export default async function ProductPage({params}:PageProps<"/products/[id]">){
       <ProductGallery product={product}/>
       <div className={styles.summary}><span className={styles.category}><i/>{product.category}</span><h1>{product.name}</h1>
         <div className={styles.storeIdentity}><span aria-hidden="true">{STORE_INITIAL}</span><div><strong>{STORE_NAME}</strong><small>Medical equipment &amp; everyday care</small></div></div>
-        <div className={styles.price}><strong>{productMoney(product.price)}</strong><span>per piece</span></div>
+        <div className={styles.price}><strong>{productMoney(product.price)}</strong>{product.previousPriceMinor != null && <del aria-label={`Previous price ${productMoney(product.previousPriceMinor/100)}`}>{productMoney(product.previousPriceMinor/100)}</del>}<span>per piece</span></div>
         <p className={styles.stockLine}><i/>{product.available?"In stock · Ready to order":"Currently out of stock"}</p>
         {product.description&&<><p className={styles.shortDescription}>{product.description}</p><a className={styles.readMore} href="#product-description">Read full description<ChevronRight size={12}/></a></>}
         <ProductActions product={product}/>

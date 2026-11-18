@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ALargeSmall, ChevronRight, Grid2X2, Heart, House, ListFilter, Mic, Package, ScanSearch, Search, ShoppingCart, UserRound, X } from "lucide-react";
+import { useCustomerAccount } from "./customer-account";
 import type { Category } from "./lib/catalog-types";
 import styles from "./store-header.module.css";
 import { STORE_NAME } from "./lib/brand";
@@ -37,6 +38,7 @@ type Props = {
 };
 
 export default function StoreHeader({ categories, category, query, itemCount, favoriteCount, savedOnly, readable, onQueryChange, onSearch, onCategorySelect, onSavedToggle, onReadableToggle }: Props) {
+  const { account } = useCustomerAccount();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [listening, setListening] = useState(false);
   const [message, setMessage] = useState("");
@@ -115,7 +117,7 @@ export default function StoreHeader({ categories, category, query, itemCount, fa
         <button type="button" className={`${styles.circle} ${styles.saved} ${savedOnly ? styles.savedActive : ""}`} aria-label={`Saved items (${favoriteCount})`} aria-pressed={savedOnly} title="Saved items" onClick={() => { setCategoriesOpen(false); onSavedToggle(); }}><Heart size={17} strokeWidth={1.8} fill={savedOnly ? "currentColor" : "none"}/>{favoriteCount > 0 && <b className={styles.count}>{favoriteCount}</b>}</button>
         <button type="button" className={`${styles.circle} ${readable ? styles.selected : ""}`} aria-label="Larger text" aria-pressed={readable} title="Toggle larger text" onClick={onReadableToggle}><ALargeSmall size={19} strokeWidth={1.8}/></button>
         <Link className={styles.circle} href="/checkout" aria-label={`Cart with ${itemCount} items`} title="Cart"><ShoppingCart size={19} strokeWidth={1.8}/>{itemCount > 0 && <b className={styles.count}>{itemCount}</b>}</Link>
-        <Link className={styles.signIn} href="/account" aria-label="Sign in"><UserRound size={19} strokeWidth={1.8}/><span>Sign in</span></Link>
+        <Link className={styles.signIn} href="/account" aria-label={account?.authenticated ? "My account" : account ? "Sign in" : "Account"}><UserRound size={19} strokeWidth={1.8}/><span>{account?.authenticated ? "My account" : account ? "Sign in" : "Account"}</span></Link>
       </div>
     </div>
     {categoriesOpen && <div className={styles.dropdown} id="store-category-menu" aria-label="Product categories"><div className={styles.dropdownHeading}><strong>Shop by category</strong><button type="button" className={styles.close} aria-label="Close categories" onClick={() => { setCategoriesOpen(false); categoryButton.current?.focus(); }}><X size={17}/></button></div><button type="button" className={styles.categoryOption} onClick={() => choose("All")}><Grid2X2 size={19}/><span>All products</span><ChevronRight size={16}/></button>{categories.length ? <ul>{categories.map(item => <li key={item.id}><button type="button" className={`${styles.categoryOption} ${category === item.id ? styles.selected : ""}`} onClick={() => choose(item.id)}>{item.image ? <img src={item.image.url} alt="" width={32} height={32}/> : <Package size={19}/>}<span>{item.name}<small>{item.productCount} product{item.productCount === 1 ? "" : "s"}</small></span><ChevronRight size={16}/></button></li>)}</ul> : <p className={styles.empty}>New categories will appear here as the collection grows.</p>}</div>}

@@ -10,4 +10,4 @@ export function cartLines(value: unknown): CartLine[] {
     return {productId,quantity:raw.quantity as number};
   }).sort((a,b)=>a.productId.localeCompare(b.productId));
 }
-export const shippingMinor = (subtotalMinor: number) => subtotalMinor>=1500000?0:65000;
+export { shippingMinor } from "./shipping";

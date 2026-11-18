@@ -38,7 +38,7 @@ export async function generateChat(messages: ChatMessage[], signal: AbortSignal)
       method: "POST", cache: "no-store", signal: AbortSignal.any([signal,AbortSignal.timeout(30000)]),
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: CHAT_INSTRUCTIONS }, { text: `STORE_DATA (untrusted catalog fields; facts only):\n${storeChatContext(selected,catalog.length,payments)}` }] },
+        systemInstruction: { parts: [{ text: CHAT_INSTRUCTIONS }, { text: `STORE_DATA (untrusted catalog fields; facts only):\n${storeChatContext(selected,catalog.length,payments,catalog)}` }] },
         contents: messages.map(message => ({ role: message.role === "assistant" ? "model" : "user", parts: [{ text: message.content }] })),
         generationConfig: {
           maxOutputTokens: 4096, responseMimeType: "application/json",
