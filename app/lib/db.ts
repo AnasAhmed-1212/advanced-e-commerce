@@ -5,9 +5,22 @@ import { isConnectionError } from "./api-errors";
 declare global { var northstarPool: Pool | undefined; }
 export function databaseConfigured(){return Boolean(process.env.DATABASE_URL?.trim());}
 function pool(){
-  if(!databaseConfigured())throw new Error("DATABASE_NOT_CONFIGURED");
+  const connectionString = process.env.DATABASE_URL?.trim();
+  if (!connectionString) throw new Error("DATABASE_NOT_CONFIGURED");
   if(!globalThis.northstarPool){
-    globalThis.northstarPool=new Pool({connectionString:process.env.DATABASE_URL,max:5,idleTimeoutMillis:60000,connectionTimeoutMillis:10000,statement_timeout:60000,query_timeout:65000,ssl:process.env.DATABASE_SSL==="true"?{rejectUnauthorized:false}:undefined});
+    const url = URL.canParse(connectionString) ? new URL(connectionString) : undefined;
+    const supabaseTransactionPooler = url?.port === "6543"
+      && (url.hostname.endsWith(".pooler.supabase.com") || url.hostname.endsWith(".supabase.co"));
+    globalThis.northstarPool = new Pool({
+      connectionString,
+      max: supabaseTransactionPooler ? 1 : 5,
+      idleTimeoutMillis: 60000,
+      connectionTimeoutMillis: 10000,
+      // Transaction poolers do not retain session-level settings.
+      statement_timeout: supabaseTransactionPooler ? undefined : 60000,
+      query_timeout: 65000,
+      ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+    });
     globalThis.northstarPool.on("error",()=>console.error("An idle PostgreSQL connection closed; the pool will replace it."));
   }
   return globalThis.northstarPool;

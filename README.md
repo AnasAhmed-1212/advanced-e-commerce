@@ -123,12 +123,27 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-1. Import this repository with the **Next.js** framework preset. Use `npm run build` and the default output directory.
-2. In Supabase, open **Connect** and copy the **Transaction pooler** PostgreSQL URI (port `6543`). Copy the exact host and username provided there; the pooler username normally includes the project reference. Insert your database password, URL-encoding special characters. Supabase recommends transaction pooling for serverless connections; the direct host may require IPv6.
-3. In Vercel **Project → Settings → Environment Variables**, add `DATABASE_URL` with that complete URI for **Production**, and for **Preview** if needed. Paste the value without surrounding quotes. Keep the provider's TLS parameters and leave `DATABASE_SSL=false` when TLS is configured in the URI.
-4. Add the other values from your local environment: `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CUSTOMER_SESSION_SECRET`, `GEMINI_API_KEY`, and `GEMINI_MODEL`. These enable admin login, customer accounts, and the assistant. Never prefix secrets with `NEXT_PUBLIC_`. Your ignored `.env.local` is not automatically uploaded.
-5. If this points to a new database, apply the migrations with `npm run db:migrate` from a trusted local environment configured for that database. An existing migrated Supabase database does not need to be recreated.
-6. **Redeploy** after changing environment variables; they apply to new deployments.
+Import the repository in Vercel with the **Next.js** framework preset and the repository root as the root directory. Use `npm run build` and the default output directory.
+
+In **Project → Settings → Environment Variables**, add the values for **Production**. Paste each value without surrounding quotes. Use separate credentials and a separate database for **Preview** if you need to test order or catalog changes there. Keep `.env.local` out of Git and add secret values directly in Vercel.
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | Required for the store. In Supabase, open **Connect → Transaction pooler** and copy the PostgreSQL URI on port `6543`. Use the exact host and username shown. Insert the URL-encoded database password and preserve the TLS settings. If the URI has no TLS option, add `sslmode=require`. |
+| `ADMIN_EMAIL` | The email used to sign in at `/admin`. |
+| `ADMIN_PASSWORD_HASH` | The saved `salt:hash` from `.env.local`. Use `npm.cmd run admin:configure` in PowerShell if you still need to generate it. |
+| `ADMIN_SESSION_SECRET` | A random secret of at least 32 characters for admin sessions. |
+| `CUSTOMER_SESSION_SECRET` | A separate random secret of at least 32 characters for customer sessions and order receipts. |
+| `GEMINI_API_KEY` | The server-side Gemini key if you use the assistant. |
+| `GEMINI_MODEL` | The assistant model. Use `gemini-3.5-flash-lite` to match the verified local configuration. |
+| `DATABASE_SSL` | Optional. Leave unset or use `false` when TLS is configured in `DATABASE_URL`. |
+| `CHATBOT_TRUST_PROXY` | Optional. Leave unset or use `false` to use the default shared request limit. |
+
+Generate a session secret with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Run it separately for each secret you need.
+
+For a new Supabase database, apply the migrations from a trusted local terminal with `npm run db:migrate` using a direct or Session pooler connection. If the deployment uses the already migrated database, its existing catalog and orders are available through the Transaction pooler.
+
+Deploy or redeploy after saving the environment variables. Check `/api/v1/catalog`, sign in at `/admin`, and send a test chat message if you enabled Gemini. On Vercel, keep admin image uploads to about 4 MB per file to fit within the function request limit.
 
 If the storefront displays “We’ll be right back”, refresh it and inspect **Vercel → Logs** for `Catalog database request failed`. The log includes a diagnostic code and, for DNS lookup failures, the hostname that failed. Passwords and connection strings are never logged:
 
@@ -140,4 +155,4 @@ If the storefront displays “We’ll be right back”, refresh it and inspect *
 | `42P01`, `42703` | The configured database is missing a required table or column; apply the project migrations. |
 | Certificate-related code | Check the provider's TLS settings and certificate configuration. |
 
-Sources: [Supabase database connections](https://supabase.com/docs/guides/database/connecting-to-postgres), [Vercel environment variables](https://vercel.com/docs/environment-variables).
+[Supabase database connections](https://supabase.com/docs/guides/database/connecting-to-postgres) · [Vercel environment variables](https://vercel.com/docs/environment-variables) · [Vercel Functions limits](https://vercel.com/docs/functions/limitations)
