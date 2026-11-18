@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "admin:hash-password": "node scripts/hash-admin-password.mjs",
+    "admin:configure": "node scripts/hash-admin-password.mjs --configure",
+    "db:check": "node scripts/check-database.mjs",
+    "db:configure": "node scripts/check-database.mjs --configure",
     "db:migrate": "node scripts/migrate.mjs",
+    "chat:configure": "node scripts/configure-chat.mjs",
     "test:commerce": "node scripts/test-commerce.mjs",
     "test:chatbot": "node scripts/test-chatbot.mjs"
   },

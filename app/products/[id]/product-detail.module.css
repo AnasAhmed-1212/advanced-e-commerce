@@ -6,4 +6,8 @@
 @media(hover:hover) and (pointer:fine){.mainImageButton:hover .mainImage{transform:scale(1.7)}}
 @media(max-width:1000px){.shell{width:calc(100% - 40px)}.layout{grid-template-columns:minmax(0,1fr) minmax(300px,.9fr);gap:24px}.gallery{grid-template-columns:48px minmax(0,1fr);gap:8px}.gallery .thumbnails button{width:44px;height:48px}.summary h1{font-size:21px}.galleryFooter>span{font-size:9px}.specifics dl{gap:14px 20px}}
 @media(max-width:760px){.shell{width:calc(100% - 28px)}.header{min-height:67px}.header nav{gap:14px;font-size:11px}.header nav a:nth-child(2){display:none}.breadcrumb{min-height:46px;font-size:10px}.layout{grid-template-columns:minmax(0,1fr);gap:25px}.gallery{grid-template-columns:1fr;gap:10px}.gallery .stage{grid-row:1;aspect-ratio:1.1}.gallery .thumbnails{grid-row:2;flex-direction:row;max-height:none;overflow-x:auto;overflow-y:hidden}.gallery .thumbnails button{width:54px;height:58px}.galleryFooter{grid-column:1;grid-row:3}.galleryFooter>span{font-size:10px}.summary h1{font-size:23px}.summary{padding-top:0}.summary .price strong{font-size:28px}.specifics,.description{padding:23px 16px 4px}.specifics dl{grid-template-columns:1fr;gap:12px}.detailTabs{padding:16px;gap:22px;font-size:11px}.below{margin-top:28px}.footer{flex-wrap:wrap}.galleryFooter>span{max-width:60%;text-align:right}.mainImageButton{padding:12px}.details{margin-bottom:40px}}
+@media(max-width:420px){
+  .header :global(.logo){font-size:16px;white-space:nowrap}
+  .header nav{flex-wrap:wrap;justify-content:flex-end;gap:6px 10px}
+}
 @media(prefers-reduced-motion:reduce){.mainImage{transition:none}}

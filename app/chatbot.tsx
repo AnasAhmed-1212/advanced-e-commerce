@@ -7,6 +7,7 @@ import { AlertCircle, Bot, ChevronRight, LoaderCircle, MessageCircle, PackageSea
 import type { ChatMessage, ChatReply } from "./lib/chatbot-policy";
 import { money } from "./catalog";
 import styles from "./chatbot.module.css";
+import { STORE_NAME } from "./lib/brand";
 
 type Message = ChatMessage & { products?: ChatReply["products"] };
 const suggestions = [
@@ -82,7 +83,7 @@ export default function Chatbot() {
     {open && <section id="store-chat-panel" className={styles.panel} role="dialog" aria-modal="false" aria-labelledby="store-chat-title">
       <header className={styles.header}>
         <span className={styles.avatar}><Bot size={24} strokeWidth={1.8}/></span>
-        <div className={styles.heading}><h2 id="store-chat-title">Northstar assistant</h2><p>AI equipment shopping guide</p></div>
+        <div className={styles.heading}><h2 id="store-chat-title">{STORE_NAME} assistant</h2><p>AI equipment shopping guide</p></div>
         <button type="button" className={styles.headerButton} aria-label="Start a new chat" title="Start a new chat" onClick={reset}><RotateCcw size={17}/></button>
         <button type="button" className={styles.headerButton} aria-label="Close chat" onClick={() => { setOpen(false); launcher.current?.focus(); }}><X size={20}/></button>
       </header>
@@ -91,7 +92,7 @@ export default function Chatbot() {
         <div className={styles.intro}><span><PackageSearch size={25} strokeWidth={1.6}/></span><h3>Equipment, made simpler.</h3><p>Assalam-o-Alaikum! Looking for a nebulizer, BP monitor or sugar checker? I can help you compare options and find the right questions to ask.</p><p className={styles.urdu} lang="ur" dir="rtl">آپ اردو یا رومن اردو میں بھی سوال کر سکتے ہیں۔</p></div>
         {!messages.length && !pending && <div className={styles.suggestions}>{suggestions.map(suggestion => <button key={suggestion.label} type="button" onClick={() => void send(suggestion.question)}>{suggestion.label}<ChevronRight size={13}/></button>)}</div>}
         {messages.map((message,index) => <div key={index} className={`${styles.message} ${message.role === "user" ? styles.user : styles.assistant}`}>
-          <span className={styles.speaker}>{message.role === "user" ? "You" : "Northstar AI"}</span><p dir="auto">{message.content}</p>
+          <span className={styles.speaker}>{message.role === "user" ? "You" : `${STORE_NAME} AI`}</span><p dir="auto">{message.content}</p>
           {message.products && message.products.length > 0 && <div className={styles.products}>{message.products.map(product => <Link key={product.id} href={product.href} className={styles.product} onClick={() => setOpen(false)}><div><strong>{product.name}</strong><small>{money(product.price)} · {product.available ? "In stock" : "Out of stock"}</small></div><ChevronRight size={17}/></Link>)}</div>}
         </div>)}
         {pending && <><div className={`${styles.message} ${styles.user}`}><span className={styles.speaker}>You</span><p dir="auto">{pending}</p></div><div className={styles.typing}><LoaderCircle size={15} className={styles.spinner}/><span>Checking your question…</span></div></>}

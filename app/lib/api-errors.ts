@@ -11,7 +11,7 @@ export function logCatalogFailure(error: unknown) {
     ? rawHostname : undefined;
   // DNS errors expose only the lookup hostname, never credentials or the URI.
   // Do not log the full error: its message can contain connection details.
-  console.error("Catalog database request failed", { code, ...(hostname ? { hostname } : {}) });
+  console.error(`Catalog database request failed (${code})${hostname ? ` for ${hostname}` : ""}`);
 }
 export function isConnectionError(error: unknown) {
   if (!error || typeof error!=="object") return false;

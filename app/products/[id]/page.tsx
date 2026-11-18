@@ -12,23 +12,24 @@ import { ProductShelf, RecentlyViewed } from "../../product-shelf";
 import ProductActions from "./product-actions";
 import ProductGallery from "./product-gallery";
 import styles from "./product-detail.module.css";
+import { STORE_INITIAL, STORE_NAME } from "../../lib/brand";
 
 const readCatalog=cache(listShopProducts);
 export async function generateMetadata({params}:PageProps<"/products/[id]">):Promise<Metadata>{
   await connection();const{id}=await params,product=(await readCatalog()).find(item=>item.id===id||item.slug===id);
-  return product?{title:`${product.name} — Northstar`,description:product.description.slice(0,160),openGraph:{images:product.images[0]?[product.images[0].url]:[]}}:{};
+  return product?{title:`${product.name} — ${STORE_NAME}`,description:product.description.slice(0,160),openGraph:{images:product.images[0]?[product.images[0].url]:[]}}:{};
 }
 export default async function ProductPage({params}:PageProps<"/products/[id]">){
   await connection();const{id}=await params,[catalog,payments]=await Promise.all([readCatalog(),getPaymentSettings()]);
   const product=catalog.find(item=>item.id===id||item.slug===id);if(!product)notFound();
   const related=catalog.filter(item=>item.id!==product.id).sort((a,b)=>Number(b.categoryId===product.categoryId)-Number(a.categoryId===product.categoryId)||Number(b.available>0)-Number(a.available>0)).slice(0,10);
   return <main className={styles.page}><OfferStrip/><div className={styles.shell}>
-    <header className={styles.header}><Link className="logo" href="/"><span>N</span>northstar</Link><nav><Link href="/#products">All products</Link><Link href="/account">My orders</Link><Link href="/checkout">Cart &amp; checkout</Link></nav></header>
+    <header className={styles.header}><Link className="logo" href="/"><span aria-hidden="true">{STORE_INITIAL}</span>{STORE_NAME}</Link><nav><Link href="/#products">All products</Link><Link href="/account">My orders</Link><Link href="/checkout">Cart &amp; checkout</Link></nav></header>
     <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href="/">Home</Link><ChevronRight size={12}/><span>{product.category}</span><ChevronRight size={12}/><strong>{product.name}</strong></nav>
     <section className={styles.layout} aria-label="Product information">
       <ProductGallery product={product}/>
       <div className={styles.summary}><span className={styles.category}><i/>{product.category}</span><h1>{product.name}</h1>
-        <div className={styles.storeIdentity}><span>N</span><div><strong>Northstar</strong><small>Medical equipment &amp; everyday care</small></div></div>
+        <div className={styles.storeIdentity}><span aria-hidden="true">{STORE_INITIAL}</span><div><strong>{STORE_NAME}</strong><small>Medical equipment &amp; everyday care</small></div></div>
         <div className={styles.price}><strong>{productMoney(product.price)}</strong><span>per piece</span></div>
         <p className={styles.stockLine}><i/>{product.available?"In stock · Ready to order":"Currently out of stock"}</p>
         {product.description&&<><p className={styles.shortDescription}>{product.description}</p><a className={styles.readMore} href="#product-description">Read full description<ChevronRight size={12}/></a></>}
@@ -48,6 +49,6 @@ export default async function ProductPage({params}:PageProps<"/products/[id]">){
       </dl><p>For model-specific features, fit and compatibility, check the description and manufacturer instructions or ask our store.</p></div>
       <div id="product-description" className={styles.description}><h2>Item description from the store</h2><p>{product.description||"Contact our store for the full product specifications and compatibility information."}</p>{product.images.length>0&&<div className={styles.descriptionImages}>{product.images.map((image,i)=><img key={image.id} src={image.url} alt={`${product.name} — product photo ${i+1}`} width={image.width} height={image.height} loading="lazy"/>)}</div>}</div>
     </section>
-    <footer className={styles.footer}><span>Northstar · Medical equipment for everyday care</span><Link href="/#products"><ShoppingBag size={12} style={{display:"inline",marginRight:5}}/>Continue shopping</Link></footer>
+    <footer className={styles.footer}><span>{STORE_NAME} · Medical equipment for everyday care</span><Link href="/#products"><ShoppingBag size={12} style={{display:"inline",marginRight:5}}/>Continue shopping</Link></footer>
   </div></main>;
 }

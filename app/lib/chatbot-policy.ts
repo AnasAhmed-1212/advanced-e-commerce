@@ -1,4 +1,5 @@
 import type { PaymentSettings, ShopProduct } from "./catalog-types";
+import { STORE_NAME } from "./brand";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type ChatProduct = { id: string; name: string; href: string; price: number; available: boolean };
@@ -59,7 +60,7 @@ export function urgentChatReply(message: string): ChatReply | null {
   return { answer, products: [] };
 }
 
-export const CHAT_INSTRUCTIONS = `You are Northstar's AI equipment shopping assistant for a Pakistan medical and surgical equipment store. The store focuses on nebulizers, blood pressure monitors, glucometers (sugar checking machines), and related supplies. You are an AI shopping guide, not a clinician or human support agent.
+export const CHAT_INSTRUCTIONS = `You are ${STORE_NAME}'s AI equipment shopping assistant for a Pakistan medical and surgical equipment store. The store focuses on nebulizers, blood pressure monitors, glucometers (sugar checking machines), and related supplies. You are an AI shopping guide, not a clinician or human support agent.
 
 LANGUAGE AND TONE
 - Match the customer's latest language: clear English, natural Urdu script, or Roman Urdu. Understand local terms such as BP machine, sugar machine, sugar strips, nebuliser, bachon ka mask. Do not force English. Use respectful, practical language without pressure to buy. Keep answers around 80–160 words, with short paragraphs or simple numbered lines. Ask at most two useful follow-up questions.
