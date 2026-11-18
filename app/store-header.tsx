@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ALargeSmall, ChevronRight, Grid2X2, Heart, House, ListFilter, Mic, Package, ScanSearch, Search, ShoppingCart, UserRound, X } from "lucide-react";
 import type { Category } from "./lib/catalog-types";
 import styles from "./store-header.module.css";
 import { STORE_NAME } from "./lib/brand";
+import logo from "../public/logo/Untitled Design.png";
 
 type Recognition = {
   lang: string;
@@ -96,8 +98,7 @@ export default function StoreHeader({ categories, category, query, itemCount, fa
   return <header ref={header} className={styles.header} data-store-header>
     <div className={styles.row}>
       <Link className={styles.brand} href="/" aria-label={`${STORE_NAME} home`}>
-        <span className={styles.wordmark}>{STORE_NAME}</span>
-        <small>EVERYDAY ESSENTIALS</small>
+        <Image className={styles.brandLogo} src={logo} alt="" sizes="(max-width: 400px) 118px, (max-width: 600px) 142px, 176px" loading="eager" />
       </Link>
       <form className={styles.search} role="search" onSubmit={event => { event.preventDefault(); setCategoriesOpen(false); onSearch(query); }}>
         <button type="submit" className={styles.searchIcon} aria-label="Search products"><Search size={18} strokeWidth={1.8}/></button>

@@ -11,3 +11,5 @@
 @media(max-width:1023px){.grid.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.productRail{grid-auto-columns:calc((100% - 28px)/3)}}
 @media(max-width:760px){.grid.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card .cardArt{margin:6px 6px 0}.cardBody{padding:10px}.card .cardName{font-size:12px;height:51px;line-height:17px}.card .cardPrice{font-size:17px}.cardMeta{font-size:9px}.card .favorite,.quickView{width:29px;height:29px}.productRail{grid-auto-columns:calc((100% - 10px)/2);gap:10px}.lightbox{width:calc(100% - 16px);max-height:calc(100dvh - 16px)}.lightboxStage{height:60dvh}.lightboxInner header{padding:12px}.shelfHeading h2{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.card,.cardImage{transition:none}}
+.footerBrand{display:block;width:176px;max-width:100%}
+.footerBrand img{display:block;width:100%;height:auto}
