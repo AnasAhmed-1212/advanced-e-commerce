@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { trackStoreActivity } from "./storefront-tracker";
 import { UUID_PATTERN, type ShopProduct } from "./lib/catalog-types";
 type CartLine={productId:string;quantity:number};
 type CartContextValue={lines:CartLine[];products:ShopProduct[];itemCount:number;subtotal:number;hydrated:boolean;catalogLoading:boolean;catalogError:string;openCart:()=>void;closeCart:()=>void;cartOpen:boolean;addItem:(id:string,quantity?:number,showDrawer?:boolean)=>void;updateQuantity:(id:string,quantity:number)=>void;removeItem:(id:string)=>void;clearCart:()=>void;refreshCatalog:()=>Promise<void>};
@@ -17,6 +18,8 @@ export function CartProvider({children}:{children:React.ReactNode}){
     cartOpen,openCart:()=>setCartOpen(true),closeCart:()=>setCartOpen(false),
     addItem:(id,quantity=1,showDrawer=true)=>{if(!UUID_PATTERN.test(id)||!Number.isInteger(quantity)||quantity<1)return;
       setLines(current=>{const product=products.find(p=>p.id===id),max=Math.min(20,product?.available??20);if(max<1)return current;return current.some(l=>l.productId===id)?current.map(l=>l.productId===id?{...l,quantity:Math.min(max,l.quantity+quantity)}:l):current.length>=50?current:[...current,{productId:id,quantity:Math.min(max,quantity)}];});
+      const item = products.find(product => product.id === id);
+      if (item) trackStoreActivity("add_to_cart", "/products/" + item.slug);
       if(showDrawer)setCartOpen(true);
     },
     updateQuantity:(id,quantity)=>setLines(current=>!Number.isInteger(quantity)?current:quantity<1?current.filter(l=>l.productId!==id):current.map(l=>l.productId===id?{...l,quantity:Math.min(20,quantity)}:l)),removeItem:id=>setLines(current=>current.filter(l=>l.productId!==id)),clearCart:()=>setLines([]),refreshCatalog}),[lines,products,hydrated,catalogLoading,catalogError,cartOpen]);

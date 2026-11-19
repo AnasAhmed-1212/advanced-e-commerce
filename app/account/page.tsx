@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { money } from "../catalog";
+import { trackStoreActivity } from "../storefront-tracker";
 import { useCart } from "../cart-context";
 import { useCustomerAccount } from "../customer-account";
 import { useFavorites } from "../use-favorites";
@@ -36,6 +37,7 @@ export default function AccountPage() {
         const result = await response.json();
         throw new Error(result.error || "Unable to continue.");
       }
+      trackStoreActivity(mode === "register" ? "account_registered" : "signed_in");
       setActive("Orders");
       await refresh();
     } catch (reason) {
@@ -51,6 +53,7 @@ export default function AccountPage() {
     try {
       const response = await fetch("/api/v1/account/logout", { method: "POST" });
       if (!response.ok) throw new Error();
+      trackStoreActivity("signed_out");
       await refresh();
     } catch {
       setError("Unable to sign out. Please try again.");

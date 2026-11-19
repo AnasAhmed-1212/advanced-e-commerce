@@ -49,6 +49,7 @@ try{
   assert(ready,"Test server did not start");
   assert.equal((await fetch(`${base}/api/v1/admin/categories`)).status,401);
   assert.equal((await fetch(new URL("/api/v1/admin/customers",base))).status,401);
+  assert.equal((await fetch(new URL("/api/v1/admin/visitors",base))).status,401);
   const browserPath=process.env.COMMERCE_BROWSER_PATH||["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe","C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"].find(file=>fs.existsSync(file));
   browser=await chromium.launch({headless:true,...(browserPath?{executablePath:browserPath}:{})});
   const admin=await browser.newContext({baseURL:base,viewport:{width:1440,height:1000}}),page=await admin.newPage();
@@ -73,6 +74,13 @@ try{
   await expect(customerPage.locator("[data-store-header]").getByRole("link",{name:"Sign in",exact:true})).toHaveCount(0);
   await page.getByRole("button",{name:"Customers",exact:true}).click();
   await expect(page.getByRole("cell",{name:customerEmail,exact:true})).toBeVisible();
+  const visitReport = async () => (await adminApi("/api/v1/admin/visitors")).body;
+  await expect.poll(async () => (await visitReport()).activity?.some(entry => entry.kind === "page_view" && entry.path === "/")).toBe(true);
+  const initialReport = await visitReport();
+  assert.equal(initialReport.active,1);
+  assert.equal(initialReport.total,1);
+  await page.getByRole("button",{name:"Visitors",exact:true}).click();
+  await expect(page.getByRole("cell",{name:"Page viewed",exact:true})).toBeVisible();
   await registeredContext.close();
   await page.getByRole("button",{name:"Categories",exact:true}).click();
   await page.getByRole("button",{name:"+ Add category",exact:true}).click();
@@ -159,7 +167,8 @@ try{
     });
     return customer.evaluate(()=>JSON.parse(sessionStorage.getItem("northstar-order-confirmation")));
   }
-  const cod=await delivery("cod");assert.equal(cod.totalMinor,324900);assert.equal(cod.paymentMethod,"cod");
+  const cod=await delivery("cod");
+  await expect.poll(async () => (await visitReport()).activity?.map(entry => entry.kind)).toEqual(expect.arrayContaining(["account_registered","add_to_cart","checkout_started","order_placed"]));assert.equal(cod.totalMinor,324900);assert.equal(cod.paymentMethod,"cod");
   let dbOrder=(await testPool.query("SELECT * FROM orders WHERE id=$1",[cod.orderId])).rows[0];assert.equal(dbOrder.payment_status,"unpaid");assert(dbOrder.user_id);
   const replay=await fetch(`${base}/api/v1/checkout/orders`,{method:"POST",headers:{"content-type":"application/json","idempotency-key":submitted.key,origin:base},body:JSON.stringify(submitted.body)});assert.equal(replay.status,201);assert.equal((await replay.json()).orderId,cod.orderId);
   const failed=await fetch(`${base}/api/v1/checkout/orders`,{method:"POST",headers:{"content-type":"application/json","idempotency-key":randomUUID(),origin:base},body:JSON.stringify(submitted.body)});assert.equal(failed.status,409);
