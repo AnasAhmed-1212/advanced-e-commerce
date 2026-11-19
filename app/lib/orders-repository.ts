@@ -8,9 +8,9 @@ function dto(r:OrderRow):AdminOrder{return{id:r.id,orderNumber:r.order_number,em
 export async function listAdminOrders(){return(await query<OrderRow>(`${select} GROUP BY o.id ORDER BY o.created_at DESC LIMIT 200`)).rows.map(dto);}
 export async function getAdminOrder(id:string){
   const result=await query<OrderRow>(`${select} WHERE o.id=$1 GROUP BY o.id`,[id]);if(!result.rows[0])return null;
-  const items=await query<{id:string;title_snapshot:string;quantity:number;unit_price_minor:string;line_total_minor:string}>("SELECT id,title_snapshot,quantity,unit_price_minor,line_total_minor FROM order_items WHERE order_id=$1 ORDER BY id",[id]);
+  const items=await query<{id:string;title_snapshot:string;quantity:number;unit_price_minor:string;line_total_minor:string;unit_cost_minor:string|null}>("SELECT id,title_snapshot,quantity,unit_price_minor,line_total_minor,unit_cost_minor FROM order_items WHERE order_id=$1 ORDER BY id",[id]);
   const shipping=await query<{shipping_snapshot:Record<string,string>}>("SELECT shipping_snapshot FROM orders WHERE id=$1",[id]);
-  return{...dto(result.rows[0]),items:items.rows.map(i=>({id:i.id,title:i.title_snapshot,quantity:i.quantity,unitPriceMinor:Number(i.unit_price_minor),lineTotalMinor:Number(i.line_total_minor)})),shipping:shipping.rows[0]?.shipping_snapshot??{}};
+  return{...dto(result.rows[0]),items:items.rows.map(i=>({id:i.id,title:i.title_snapshot,quantity:i.quantity,unitPriceMinor:Number(i.unit_price_minor),lineTotalMinor:Number(i.line_total_minor),unitCostMinor:i.unit_cost_minor == null ? null : Number(i.unit_cost_minor)})),shipping:shipping.rows[0]?.shipping_snapshot??{}};
 }
 export async function updateAdminOrder(id:string,input:{orderStatus?:string;paymentStatus?:string;fulfillmentStatus?:string}){
   return withTransaction(async client=>{
@@ -32,4 +32,12 @@ export async function updateAdminOrder(id:string,input:{orderStatus?:string;paym
     await client.query("UPDATE orders SET order_status=$2,payment_status=COALESCE($3,payment_status),fulfillment_status=$4,inventory_status=$5 WHERE id=$1",[id,orderStatus,input.paymentStatus??null,fulfillment,nextInventory]);
     return true;
   });
+}
+
+export async function recordHistoricalUnitCost(orderId: string, itemId: string, unitCostMinor: number) {
+  const result = await query(
+    "UPDATE order_items SET unit_cost_minor=$3 WHERE order_id=$1 AND id=$2 AND unit_cost_minor IS NULL",
+    [orderId, itemId, unitCostMinor],
+  );
+  return result.rowCount === 1;
 }

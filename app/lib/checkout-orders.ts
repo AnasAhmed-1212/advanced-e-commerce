@@ -10,7 +10,7 @@ import type { PaymentSettings } from "./catalog-types";
 
 export type Delivery={email:string;phone:string;firstName:string;lastName:string;street:string;city:string;postalCode:string};
 export class CheckoutError extends CommerceError { constructor(public code:string,message:string,status=400){super(message,status);} }
-type CheckoutProduct={id:string;title:string;variant_id:string;sku:string;price_minor:string;delivery_charge_minor:string|null;currency:string};
+type CheckoutProduct={id:string;title:string;variant_id:string;sku:string;price_minor:string;delivery_charge_minor:string|null;unit_cost_minor:string|null;currency:string};
 export async function createCheckoutOrder(lines:CartLine[],delivery:Delivery,idempotencyKey:string,paymentMethod:"cod"|"raast"="cod",userId:string|null=null,expectedTotalMinor?:number){
   const requestHash=createHash("sha256").update(JSON.stringify({lines,delivery,paymentMethod})).digest("hex");
   const currentPaymentSettings=paymentMethod==="raast"?await getPaymentSettings():null;
@@ -30,7 +30,7 @@ export async function createCheckoutOrder(lines:CartLine[],delivery:Delivery,ide
     const resolved: Array<CheckoutProduct & {quantity:number;unitPriceMinor:number;lineTotalMinor:number;deliveryChargeMinor:number}> = [];
     const allocations: Array<{variantId:string;warehouseId:string;quantity:number}>=[];
     for(const line of lines){
-      const product=await client.query<CheckoutProduct>(`SELECT p.id,p.title,v.id AS variant_id,v.sku,v.price_minor,v.currency,to_jsonb(v)->>'delivery_charge_minor' AS delivery_charge_minor FROM products p JOIN categories c ON c.id=p.category_id JOIN LATERAL (SELECT * FROM product_variants WHERE product_id=p.id AND active=true ORDER BY created_at,id LIMIT 1) v ON true WHERE p.id=$1 AND p.status='published' AND c.is_active=true FOR SHARE OF p,c`,[line.productId]);
+      const product=await client.query<CheckoutProduct>(`SELECT p.id,p.title,v.id AS variant_id,v.sku,v.price_minor,v.currency,to_jsonb(v)->>'delivery_charge_minor' AS delivery_charge_minor,to_jsonb(v)->>'unit_cost_minor' AS unit_cost_minor FROM products p JOIN categories c ON c.id=p.category_id JOIN LATERAL (SELECT * FROM product_variants WHERE product_id=p.id AND active=true ORDER BY created_at,id LIMIT 1) v ON true WHERE p.id=$1 AND p.status='published' AND c.is_active=true FOR SHARE OF p,c`,[line.productId]);
       const item=product.rows[0];
       if(!item)throw new CheckoutError("PRODUCT_UNAVAILABLE","A product in your cart is no longer available.",409);
       await client.query("SELECT id FROM product_variants WHERE id=$1 FOR UPDATE",[item.variant_id]);
@@ -52,7 +52,7 @@ export async function createCheckoutOrder(lines:CartLine[],delivery:Delivery,ide
     const order=await client.query<{id:string}>(`INSERT INTO orders(order_number,user_id,email_normalized,order_status,payment_status,fulfillment_status,payment_method,currency,subtotal_minor,shipping_minor,tax_minor,total_minor,shipping_snapshot) VALUES($1,$2,$3,'pending',$4,'unfulfilled',$5,'PKR',$6,$7,0,$8,$9) RETURNING id`,[orderNumber,userId,delivery.email,paymentMethod==="raast"?"pending":"unpaid",paymentMethod,subtotalMinor,shipping,totalMinor,JSON.stringify(shippingSnapshot)]);
     const orderId=order.rows[0].id;
     if(paymentDetails)await client.query("UPDATE orders SET payment_snapshot=$2 WHERE id=$1",[orderId,JSON.stringify(paymentDetails)]);
-    for(const item of resolved)await client.query("INSERT INTO order_items(order_id,variant_id,sku_snapshot,title_snapshot,quantity,unit_price_minor,line_total_minor) VALUES($1,$2,$3,$4,$5,$6,$7)",[orderId,item.variant_id,item.sku,item.title,item.quantity,item.unitPriceMinor,item.lineTotalMinor]);
+    for(const item of resolved)await client.query("INSERT INTO order_items(order_id,variant_id,sku_snapshot,title_snapshot,quantity,unit_price_minor,line_total_minor,unit_cost_minor) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",[orderId,item.variant_id,item.sku,item.title,item.quantity,item.unitPriceMinor,item.lineTotalMinor,item.unit_cost_minor]);
     for(const allocation of allocations)await client.query("INSERT INTO order_stock(order_id,variant_id,warehouse_id,quantity) VALUES($1,$2,$3,$4)",[orderId,allocation.variantId,allocation.warehouseId,allocation.quantity]);
     await client.query("INSERT INTO outbox_events(type,aggregate_id,aggregate_version,payload) VALUES('order.created',$1,1,$2)",[orderId,JSON.stringify({orderNumber,paymentMethod,totalMinor})]);
     await client.query("INSERT INTO idempotency_keys(scope,actor_key,key,request_hash,response_ref,expires_at) VALUES('checkout',$1,$2,$3,$4,now()+interval '24 hours') ON CONFLICT(scope,actor_key,key) DO UPDATE SET response_ref=EXCLUDED.response_ref",[delivery.email,idempotencyKey,requestHash,orderId]);
